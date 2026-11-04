@@ -1,0 +1,12 @@
+[project]
+name = "mongodb-ai-agent-platform"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi", "uvicorn", "pydantic-settings", "pymongo",
+  "langchain", "langchain-openai", "langgraph", "langgraph-checkpoint-mongodb", "voyageai",
+]
+[project.optional-dependencies]
+dev = ["pytest", "httpx"]
+[tool.pytest.ini_options]
+pythonpath = ["."]

@@ -1,0 +1,21 @@
+<!doctype html><html><head><meta charset="utf-8"><title>MongoDB AI Agent Platform</title>
+<style>body{font:15px system-ui;background:#001e2b;color:#e8edeb;max-width:960px;margin:2rem auto;padding:0 1rem}
+h1,h2{color:#00ed64}input,button,select{font:inherit;padding:.5rem;border-radius:6px;border:1px solid #3d4f58;background:#023430;color:#fff}
+button{background:#00ed64;color:#001e2b;border:0;cursor:pointer}pre{background:#023430;padding:.8rem;border-radius:6px;overflow:auto;white-space:pre-wrap}
+.step{border-left:3px solid #00ed64;padding:.3rem .8rem;margin:.5rem 0}.i{color:#b1ff05}</style></head><body>
+<h1>MongoDB AI Agent Platform</h1><div id="status">checking…</div>
+<h2>Agent One — Playground</h2>
+<input id="thread" value="demo-1" size="10"> <input id="msg" size="60" placeholder="Ask about MongoDB…"> <button onclick="chat()">Send</button>
+<pre id="answer"></pre><div id="exec"></div>
+<h2>Agent Two — Mentor</h2>
+<button onclick="explain()">Explain last execution</button>
+<select id="concept"><option>agent</option><option>tools</option><option>langgraph</option><option>memory</option><option>vector_search</option><option>observability</option></select>
+<button onclick="teach()">Teach me</button><div id="mentor"></div>
+<script>
+let last=null;const $=i=>document.getElementById(i);
+async function j(u,o){const r=await fetch(u,o);const t=await r.json();if(!r.ok)throw new Error(t.detail||r.status);return t}
+j('/health').then(h=>$('status').textContent=`Mode: ${h.mode.toUpperCase()} · MongoDB: ${h.mongodb}`+(h.mode=='demo'?' — set .env to enable agent features':'')).catch(e=>$('status').textContent=e);
+async function chat(){try{$('answer').textContent='…';const r=await j('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({thread_id:$('thread').value,message:$('msg').value})});last=r.execution_id;$('answer').textContent=r.answer;$('exec').textContent='execution_id: '+last+(r.fully_recorded?'':' (trace incomplete!)')}catch(e){$('answer').textContent='Error: '+e.message}}
+async function explain(){if(!last)return alert('Run a chat first');try{const r=await j('/api/mentor/explain/'+last);$('mentor').innerHTML=r.steps.map(s=>`<div class="step"><b>${s.seq}. ${s.type}</b> (${s.node||''})<br><span class="i">${s.interpretation}</span><pre>${JSON.stringify(s.recorded,null,1)}</pre></div>`).join('')+`<small>${r.disclaimer}</small>`}catch(e){$('mentor').textContent=e.message}}
+async function teach(){try{const r=await j('/api/mentor/teach/'+$('concept').value);$('mentor').innerHTML=`<h3>${r.title}</h3><p>${r.text}</p><small>${r.official?'Official course topic':'Additional material'}</small>`}catch(e){$('mentor').textContent=e.message}}
+</script></body></html>
