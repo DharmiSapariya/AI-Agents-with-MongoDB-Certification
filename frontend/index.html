@@ -13,9 +13,11 @@ button{background:#00ed64;color:#001e2b;border:0;cursor:pointer}pre{background:#
 <button onclick="teach()">Teach me</button><div id="mentor"></div>
 <script>
 let last=null;const $=i=>document.getElementById(i);
+const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+$('thread').value='t-'+crypto.randomUUID().slice(0,8);
 async function j(u,o){const r=await fetch(u,o);const t=await r.json();if(!r.ok)throw new Error(t.detail||r.status);return t}
 j('/health').then(h=>$('status').textContent=`Mode: ${h.mode.toUpperCase()} · MongoDB: ${h.mongodb}`+(h.mode=='demo'?' — set .env to enable agent features':'')).catch(e=>$('status').textContent=e);
 async function chat(){try{$('answer').textContent='…';const r=await j('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({thread_id:$('thread').value,message:$('msg').value})});last=r.execution_id;$('answer').textContent=r.answer;$('exec').textContent='execution_id: '+last+(r.fully_recorded?'':' (trace incomplete!)')}catch(e){$('answer').textContent='Error: '+e.message}}
-async function explain(){if(!last)return alert('Run a chat first');try{const r=await j('/api/mentor/explain/'+last);$('mentor').innerHTML=r.steps.map(s=>`<div class="step"><b>${s.seq}. ${s.type}</b> (${s.node||''})<br><span class="i">${s.interpretation}</span><pre>${JSON.stringify(s.recorded,null,1)}</pre></div>`).join('')+`<small>${r.disclaimer}</small>`}catch(e){$('mentor').textContent=e.message}}
-async function teach(){try{const r=await j('/api/mentor/teach/'+$('concept').value);$('mentor').innerHTML=`<h3>${r.title}</h3><p>${r.text}</p><small>${r.official?'Official course topic':'Additional material'}</small>`}catch(e){$('mentor').textContent=e.message}}
+async function explain(){if(!last)return alert('Run a chat first');try{const r=await j('/api/mentor/explain/'+last);$('mentor').innerHTML=r.steps.map(s=>`<div class="step"><b>${s.seq}. ${esc(s.type)}</b> (${esc(s.node||'')})<br><span class="i">${esc(s.interpretation)}</span><pre>${esc(JSON.stringify(s.recorded,null,1))}</pre></div>`).join('')+`<small>${esc(r.disclaimer)}</small>`}catch(e){$('mentor').textContent=e.message}}
+async function teach(){try{const r=await j('/api/mentor/teach/'+$('concept').value);$('mentor').innerHTML=`<h3>${esc(r.title)}</h3><p>${esc(r.text)}</p><small>${r.official?'Official course topic':'Additional material'}</small>`}catch(e){$('mentor').textContent=e.message}}
 </script></body></html>
