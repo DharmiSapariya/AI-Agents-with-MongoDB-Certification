@@ -7,6 +7,6 @@ dependencies = [
   "langchain", "langchain-openai", "langgraph", "langgraph-checkpoint-mongodb", "voyageai",
 ]
 [project.optional-dependencies]
-dev = ["pytest", "httpx"]
+dev = ["pytest", "httpx", "mongomock"]
 [tool.pytest.ini_options]
 pythonpath = ["."]

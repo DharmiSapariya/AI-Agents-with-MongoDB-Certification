@@ -1,41 +1,36 @@
-"""Ingest your own .md/.txt files into full_docs and chunked_docs (idempotent by title+hash).
+"""Ingest .md/.txt files from a folder into full_docs and chunked_docs.
+
 Usage: python scripts/ingest_documents.py ./my_docs
-The official course dataset is NOT bundled; this script ingests whatever you provide."""
-import hashlib, os, sys
+The official course dataset is not bundled; this ingests whatever you provide.
+"""
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 import voyageai
 from app.config import settings
+from app.ingest import ingest_document
 from app.mongo import db
 
-CHUNK, OVERLAP = 1200, 150
 
+def main(folder: str) -> None:
+    voyage = voyageai.Client(api_key=settings.voyage_api_key)
 
-def chunks(text):
-    i = 0
-    while i < len(text):
-        yield text[i:i + CHUNK]
-        i += CHUNK - OVERLAP
+    def embed(texts):
+        return voyage.embed(list(texts), model=settings.embedding_model, input_type="document").embeddings
 
-
-def main(folder):
-    vo = voyageai.Client(api_key=settings.voyage_api_key)
     full, chunked = db()["full_docs"], db()["chunked_docs"]
     for name in sorted(os.listdir(folder)):
         if not name.endswith((".md", ".txt")):
             continue
-        body = open(os.path.join(folder, name), encoding="utf-8").read()
-        title, h = os.path.splitext(name)[0], hashlib.sha256(body.encode()).hexdigest()
-        if full.find_one({"title": title, "hash": h}):
-            print("skip (unchanged):", title)
-            continue
-        full.replace_one({"title": title}, {"title": title, "body": body, "hash": h, "source": name}, upsert=True)
-        chunked.delete_many({"title": title})
-        parts = list(chunks(body))
-        embs = vo.embed(parts, model=settings.embedding_model, input_type="document").embeddings
-        assert all(len(e) == settings.embedding_dims for e in embs), "embedding dimension mismatch"
-        chunked.insert_many([{"title": title, "body": p, "embedding": e, "source": name} for p, e in zip(parts, embs)])
-        print(f"ingested {title}: {len(parts)} chunks")
+        with open(os.path.join(folder, name), encoding="utf-8") as f:
+            body = f.read()
+        title = os.path.splitext(name)[0]
+        status = ingest_document(full, chunked, embed, title, body, name, settings.embedding_dims)
+        print(f"{status}: {title}")
 
 
 if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        sys.exit(__doc__)
     main(sys.argv[1])
