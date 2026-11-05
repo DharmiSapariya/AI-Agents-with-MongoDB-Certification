@@ -13,7 +13,7 @@
 
 
 
-                                                         MongoDB AI Agent Platform
+                                                         # MongoDB AI Agent Platform
 
 A MongoDB-backed multi-tool AI agent (LangGraph + Atlas Vector Search + MongoDB checkpointing), with a second independent **Mentor** agent that explains Agent One's *recorded* execution traces. Based on the MongoDB University course *Building AI Agents with MongoDB*.
 
