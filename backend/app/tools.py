@@ -1,4 +1,6 @@
 """The two course tools (faithful to the official lesson) plus tracing and prompt-injection framing."""
+import html
+import re
 import time
 from typing import List
 
@@ -7,6 +9,15 @@ from langchain_core.tools import tool
 from .config import settings
 from .mongo import db
 from .tracing import emit
+
+
+_WRAPPER_TAG = re.compile(r"<(\s*/?\s*retrieved_document)", re.I)
+
+
+def wrap_document(title: str, body: str) -> str:
+    """Wrap retrieved text as untrusted data; a document cannot close the wrapper early."""
+    safe_body = _WRAPPER_TAG.sub(r"&lt;\1", body)
+    return f'<retrieved_document title="{html.escape(title, quote=True)}">\n{safe_body}\n</retrieved_document>'
 
 
 def generate_embedding(text: str) -> List[float]:
@@ -33,9 +44,7 @@ def get_information_for_question_answering(user_query: str) -> str:
          latency_ms=round((time.perf_counter() - t0) * 1000, 1))
     if not docs:
         return "No relevant documents found."
-    return "\n\n".join(
-        f'<retrieved_document title="{d.get("title", "unknown")}">\n{d.get("body", "")}\n</retrieved_document>'
-        for d in docs)
+    return "\n\n".join(wrap_document(d.get("title", "unknown"), d.get("body", "")) for d in docs)
 
 
 @tool
@@ -49,7 +58,7 @@ def get_page_content_for_summarization(user_query: str) -> str:
          latency_ms=round((time.perf_counter() - t0) * 1000, 1))
     if not doc:
         return "Document not found"
-    return f'<retrieved_document title="{doc["title"]}">\n{doc["body"]}\n</retrieved_document>'
+    return wrap_document(doc["title"], doc["body"])
 
 
 TOOLS = [get_information_for_question_answering, get_page_content_for_summarization]
