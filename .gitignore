@@ -4,3 +4,7 @@ __pycache__/
 node_modules/
 .venv/
 .DS_Store
+build/
+dist/
+.ruff_cache/
+.mypy_cache/
