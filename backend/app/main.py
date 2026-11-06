@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -52,10 +52,10 @@ def chat(body: ChatIn):
 
 
 @app.get("/api/executions")
-def executions(limit: int = 20):
+def executions(limit: int = Query(20, ge=1, le=100)):
     _require_config()
     from .mongo import db
-    rows = db()["agent_execution_events"].find({"type": "execution_end"}, {"_id": 0}).sort("ts", -1).limit(min(limit, 100))
+    rows = db()["agent_execution_events"].find({"type": "execution_end"}, {"_id": 0}).sort("ts", -1).limit(limit)
     return list(rows)
 
 
