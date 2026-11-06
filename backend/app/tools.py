@@ -10,7 +10,6 @@ from .config import settings
 from .mongo import db
 from .tracing import emit
 
-
 _WRAPPER_TAG = re.compile(r"<(\s*/?\s*retrieved_document)", re.I)
 
 
@@ -23,7 +22,7 @@ def wrap_document(title: str, body: str) -> str:
 def generate_embedding(text: str) -> List[float]:
     import voyageai
     c = voyageai.Client(api_key=settings.voyage_api_key)
-    return c.embed(text, model=settings.embedding_model, input_type="query").embeddings[0]
+    return [float(x) for x in c.embed([text], model=settings.embedding_model, input_type="query").embeddings[0]]
 
 
 @tool

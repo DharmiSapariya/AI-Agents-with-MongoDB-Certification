@@ -5,6 +5,7 @@ It only READS recorded events and never writes to Agent One's data.
 Every explanation separates RECORDED facts from INTERPRETATION.
 """
 from datetime import datetime, timezone
+from typing import Any
 
 CONCEPTS = {
     "agent": {"official": True, "title": "What is an AI agent?",
@@ -27,7 +28,7 @@ CONCEPTS = {
                       "text": "This project records each graph/tool/database event in MongoDB so executions can be inspected."},
 }
 
-QUIZ = [
+QUIZ: list[dict[str, Any]] = [
     {"id": "q1", "q": "Which tool handles 'Summarize the aggregation page'?",
      "options": ["get_information_for_question_answering", "get_page_content_for_summarization"], "answer": 1,
      "why": "Summaries need the full page, fetched by exact title with find_one on full_docs."},
