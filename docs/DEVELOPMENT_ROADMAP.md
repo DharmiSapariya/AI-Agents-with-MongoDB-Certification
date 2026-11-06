@@ -4,8 +4,8 @@ Order follows the project brief. Each item is one commit unless noted; tests run
 Live-Atlas items stay "pending live verification" until run against a real cluster with credentials.
 
 ## Phase A: backend
-1. docs: roadmap, status, decisions (this commit)
-2. chore: pin dependencies, add ruff and mypy config, run both in CI
+1. docs: roadmap, status, decisions (done, session 1)
+2. chore: pin dependencies, add ruff and mypy config, run both in CI (done, session 1)
 3. feat(config): validate settings at startup; structured logging; request IDs
 4. feat(database): connection lifecycle (close on shutdown, pool/timeouts), health detail
 5. feat(auth): users, password hashing, signed tokens, `/api/auth/*`

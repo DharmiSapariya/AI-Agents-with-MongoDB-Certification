@@ -2,13 +2,13 @@
 
 Statuses: COMPLETE AND VERIFIED, IMPLEMENTED BUT NOT VERIFIED, PARTIALLY IMPLEMENTED, NOT IMPLEMENTED.
 Mocked tests (mongomock, scripted model, in-memory checkpointer) never count as live verification.
-Last updated: session 1, commit 78094cc. Remote: none configured. Tests: 26 pass (all mocked).
+Last updated: session 1, after roadmap item 2. Remote: none configured. Tests: 27 pass (all mocked); ruff and mypy clean locally.
 
 ## Phase A: backend
 | Requirement | Status | Evidence / gap |
 |---|---|---|
 | Env configuration | PARTIALLY IMPLEMENTED | `config.py` (pydantic-settings); no per-environment profiles, no validation of URI shape |
-| Pinned dependencies | NOT IMPLEMENTED | `pyproject.toml` unpinned; langchain-openai and voyageai never installed or run in this environment |
+| Pinned dependencies | PARTIALLY IMPLEMENTED | direct deps pinned in `pyproject.toml`; clean venv install + 27 tests pass. No lock file for transitive deps; langchain-openai/voyageai imported but never called live |
 | MongoDB connection lifecycle | PARTIALLY IMPLEMENTED | `mongo.py` lru_cache client, no close on shutdown, no pool settings |
 | Atlas connectivity / health check | IMPLEMENTED BUT NOT VERIFIED | `/health` pings; never run against Atlas |
 | Structured logging, request IDs | NOT IMPLEMENTED | |
@@ -23,7 +23,7 @@ Last updated: session 1, commit 78094cc. Remote: none configured. Tests: 26 pass
 |---|---|---|
 | `$vectorSearch` aggregation | IMPLEMENTED BUT NOT VERIFIED | `tools.py`; never run |
 | Vector index creation | IMPLEMENTED BUT NOT VERIFIED | `scripts/create_vector_index.py`; not idempotent, does not wait for readiness |
-| Voyage embeddings, dimension validation | PARTIALLY IMPLEMENTED | dims checked at ingest (`ingest.py`, tested with a fake embedder); query side unchecked |
+| Voyage embeddings, dimension validation | PARTIALLY IMPLEMENTED | dims checked at ingest (fake embedder); query call now passes a list (regression-tested with a fake client); query-side dimension unchecked; never called live |
 | Configurable provider | NOT IMPLEMENTED | Voyage hardcoded |
 | Similarity threshold, index-not-ready handling, diagnostics | NOT IMPLEMENTED | db_operation event records scores only |
 | Resumable ingestion | PARTIALLY IMPLEMENTED | embed-then-write, hash + chunk_count (mongomock tests); no real run |
@@ -69,6 +69,6 @@ No dataset, scripts or results. NOT IMPLEMENTED. No benchmark number exists.
 |---|---|---|
 | README, audit notes | PARTIALLY IMPLEMENTED | no architecture/API/DB docs |
 | Dockerfile / Compose | PARTIALLY IMPLEMENTED | builds untested here; root user, no healthcheck |
-| CI | PARTIALLY IMPLEMENTED | `.github/workflows/ci.yml` runs pytest only; never executed on GitHub; no lint/type check |
+| CI | PARTIALLY IMPLEMENTED | `.github/workflows/ci.yml` runs ruff, mypy, pytest; never executed on GitHub |
 | Screenshots | NOT IMPLEMENTED | none until the app runs |
 | Credly link, badge vs project achievements | COMPLETE AND VERIFIED | README; certificate image checked against the claims |
