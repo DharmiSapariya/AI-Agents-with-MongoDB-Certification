@@ -13,7 +13,7 @@ from .config import settings
 from .mongo import client, db
 from .routing import route_tools
 from .tools import TOOLS
-from .tracing import Tracer, CURRENT, emit
+from .tracing import CURRENT, Tracer, emit
 
 SYSTEM = (
     "You are a helpful AI assistant with tools to answer questions and summarize MongoDB documentation. "

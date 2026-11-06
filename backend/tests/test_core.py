@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 from app import mentor
-from app.routing import route_tools, END
+from app.routing import END, route_tools
 from app.tracing import Tracer, redact
 
 

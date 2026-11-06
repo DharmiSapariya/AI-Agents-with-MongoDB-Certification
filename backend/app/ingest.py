@@ -46,7 +46,7 @@ def ingest_document(full, chunked, embed: Embedder, title: str, body: str, sourc
     vectors = embed_all(embed, parts, dims)
     chunked.delete_many({"title": title})
     chunked.insert_many([{"title": title, "body": p, "embedding": v, "source": source, "chunk_index": i}
-                         for i, (p, v) in enumerate(zip(parts, vectors))])
+                         for i, (p, v) in enumerate(zip(parts, vectors, strict=True))])
     full.replace_one({"title": title}, {"title": title, "body": body, "hash": digest,
                                         "source": source, "chunk_count": len(parts)}, upsert=True)
     return "ingested"

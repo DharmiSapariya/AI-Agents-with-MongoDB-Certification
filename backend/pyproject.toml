@@ -3,10 +3,32 @@ name = "mongodb-ai-agent-platform"
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
-  "fastapi", "uvicorn", "pydantic-settings", "pymongo",
-  "langchain", "langchain-openai", "langgraph", "langgraph-checkpoint-mongodb", "voyageai",
+  "fastapi==0.162.0",
+  "uvicorn==0.54.0",
+  "pydantic-settings==2.16.2",
+  "pymongo==4.19.0",
+  "langchain-core==1.7.6",
+  "langchain-openai==1.7.4",
+  "langgraph==1.2.20",
+  "langgraph-checkpoint-mongodb==0.5.1",
+  "voyageai==0.5.0",
 ]
 [project.optional-dependencies]
-dev = ["pytest", "httpx", "mongomock"]
+dev = ["pytest==9.2.0", "httpx==0.28.1", "mongomock==4.3.0", "ruff==0.17.4", "mypy==2.4.1"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"../scripts/*" = ["E402"]
+"tests/*" = ["B"]
+
+[tool.mypy]
+ignore_missing_imports = true

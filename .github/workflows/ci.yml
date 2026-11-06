@@ -13,4 +13,6 @@ jobs:
           python-version: "3.12"
       - run: pip install -e "backend[dev]"
         # these tests use mongomock and a scripted model; they do not touch Atlas
+      - run: cd backend && ruff check . ../scripts
+      - run: cd backend && mypy app
       - run: cd backend && pytest -q

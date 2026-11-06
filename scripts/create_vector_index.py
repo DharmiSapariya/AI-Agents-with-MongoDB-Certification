@@ -1,7 +1,10 @@
 """Create the Atlas Vector Search index on chunked_docs.embedding (512 dims, cosine)."""
-import os, sys
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 from pymongo.operations import SearchIndexModel
+
 from app.config import settings
 from app.mongo import db
 

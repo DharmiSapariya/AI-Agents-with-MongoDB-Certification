@@ -8,6 +8,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 import voyageai
+
 from app.config import settings
 from app.ingest import ingest_document
 from app.mongo import db
