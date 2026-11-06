@@ -15,7 +15,7 @@
 
 # MongoDB AI Agent Platform
 
-A MongoDB-backed multi-tool AI agent (LangGraph + Atlas Vector Search + MongoDB checkpointing), with a second independent **Mentor** agent that explains Agent One's *recorded* execution traces. Based on the MongoDB University course *Building AI Agents with MongoDB*.
+A MongoDB-backed multi-tool AI agent (LangGraph + Atlas Vector Search + MongoDB checkpointing), with a second **Mentor** component that explains Agent One's *recorded* execution traces. Based on the MongoDB University course *Building AI Agents with MongoDB*.
 
 <!-- ============ CERTIFICATION SECTION (place after the intro / problem statement) ============ -->
 ## 🏅 Certification
@@ -54,9 +54,11 @@ This project builds on the official **MongoDB Skill badge: AI Agents with MongoD
 |---|---|
 | Agent One: 2 course tools, LangGraph loop, conditional routing, MongoDB checkpointer | IMPLEMENTED BUT NOT VERIFIED (needs Atlas + OpenAI + Voyage keys) |
 | Event tracing to `agent_execution_events` with redaction and "fully_recorded" flag | IMPLEMENTED; redaction/tracer logic unit-tested, live DB path not verified |
-| Agent Two (Mentor): teach, explain trace, quiz | IMPLEMENTED; explain/quiz logic unit-tested |
-| Ingestion + vector index scripts | IMPLEMENTED BUT NOT VERIFIED |
-| Frontend | PARTIAL: one static page (chat + mentor) |
+| Agent Two (Mentor): static concept text, rule-based trace explanation, 3-question quiz | IMPLEMENTED; unit-tested. It is not an LLM agent: no model, graph or per-user history |
+| Ingestion (embed-then-write, batched, resumable by hash + chunk count) | Logic tested with mongomock and a fake embedder; real Voyage/Atlas run NOT VERIFIED |
+| Vector index and regular index scripts | IMPLEMENTED BUT NOT VERIFIED against Atlas |
+| Frontend | PARTIAL: one static page (chat + mentor), trace data HTML-escaped |
+| Authentication, rate limiting, per-user session ownership | NOT IMPLEMENTED: anyone who can reach the server can call the LLM, read traces and use any thread_id |
 | Long-term memory, SSE live updates, observability dashboard, DB explorer UI, benchmarks, step-through playback, learning-center modules, React frontend, CI | NOT IMPLEMENTED |
 | Dependency lockfile | NOT DONE (versions unpinned, not checked against current docs) |
 
@@ -65,7 +67,8 @@ No screenshots, benchmark numbers or deployment are claimed. The course dataset 
 ## Run
 ```bash
 cp .env.example .env        # fill in keys
-make install && make test   # unit tests need no keys
+make install && make test   # no keys needed; tests use mongomock and a scripted model, not Atlas
+python scripts/create_indexes.py
 python scripts/ingest_documents.py ./my_docs
 python scripts/create_vector_index.py
 make run                    # http://localhost:8000

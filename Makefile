@@ -4,5 +4,7 @@ test:
 	cd backend && pytest -q
 run:
 	cd backend && uvicorn app.main:app --reload
-index:
+indexes:
+	python scripts/create_indexes.py
+vector-index:
 	python scripts/create_vector_index.py
