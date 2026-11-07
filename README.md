@@ -59,8 +59,9 @@ This project builds on the official **MongoDB Skill badge: AI Agents with MongoD
 | Vector index and regular index scripts | IMPLEMENTED BUT NOT VERIFIED against Atlas |
 | Frontend | PARTIAL: one static page (chat + mentor), trace data HTML-escaped |
 | Authentication, rate limiting, per-user session ownership | NOT IMPLEMENTED: anyone who can reach the server can call the LLM, read traces and use any thread_id |
-| Long-term memory, SSE live updates, observability dashboard, DB explorer UI, benchmarks, step-through playback, learning-center modules, React frontend, CI | NOT IMPLEMENTED |
-| Dependency lockfile | NOT DONE (versions unpinned, not checked against current docs) |
+| Long-term memory, SSE live updates, observability dashboard, DB explorer UI, benchmarks, step-through playback, learning-center modules, React frontend | NOT IMPLEMENTED |
+| Direct dependencies pinned; CI runs ruff, mypy and pytest | Pinned versions install cleanly and pass locally; CI has not been observed running on GitHub; no lockfile for transitive packages |
+| Startup settings validation, JSON logging, request IDs, MongoDB lifecycle, health states, standard error responses | IMPLEMENTED; covered by mocked tests (fake clients, mongomock), not run against Atlas |
 
 No screenshots, benchmark numbers or deployment are claimed. The course dataset is not bundled: ingest your own docs.
 
@@ -73,7 +74,27 @@ python scripts/ingest_documents.py ./my_docs
 python scripts/create_vector_index.py
 make run                    # http://localhost:8000
 ```
-Without keys the app runs in **demo mode**: mentor teaching and quiz work; agent, traces and DB views return 503.
+Without keys the app runs in **demo mode**: mentor teaching and quiz work; agent, traces and DB views return 503 with code `demo_mode`.
+
+## Configuration
+Settings come from the environment or `backend/.env` and are validated at startup. A bad value stops the app with a message that names the variable, never its value.
+
+| Variable | Default | Notes |
+|---|---|---|
+| `APP_MODE` | `auto` | `auto`: live when all three credentials are set, otherwise demo. `demo`: never contact services. `live`: refuse to start unless configured |
+| `MONGODB_URI`, `OPENAI_API_KEY`, `VOYAGE_API_KEY` | empty | all three are required for live mode; `MONGODB_URI` must start with `mongodb://` or `mongodb+srv://` |
+| `DB_NAME`, `CHECKPOINT_DB` | `ai_agents`, `checkpointing_db` | letters, digits, `_`, `-` |
+| `LLM_MODEL`, `EMBEDDING_MODEL`, `EMBEDDING_DIMS` | `gpt-4o`, `voyage-3-lite`, `512` | dimensions are checked against known Voyage models (`voyage-3-lite` 512, `voyage-3` 1024) |
+| `MAX_GRAPH_STEPS` | `12` | 2-50, agent recursion limit |
+| `MONGO_TIMEOUT_MS`, `MONGO_SOCKET_TIMEOUT_MS`, `MONGO_MAX_POOL_SIZE` | `5000`, `30000`, `20` | server selection and connect timeout, socket timeout, pool size |
+| `LLM_TIMEOUT_S`, `LLM_MAX_RETRIES`, `EMBEDDING_TIMEOUT_S`, `EMBEDDING_MAX_RETRIES` | `30`, `2`, `15`, `2` | per-call timeout and retry limit |
+| `LOG_LEVEL`, `LOG_REDACT_PATTERNS` | `INFO`, `[]` | extra regexes (JSON list) masked in logs, on top of built-in secret patterns |
+
+## Operations
+- **Logs** are one JSON object per line on stdout: `ts`, `level`, `logger`, `event`, plus `request_id` and `execution_id` when known. Each request produces a `request_completed` line (method, route, status, duration). Prompts, answers and retrieved text are not logged.
+- **Request IDs**: send `X-Request-ID` (8-64 chars of `A-Za-z0-9._-`) or one is generated. It is returned on every response, appears in logs and is stored on execution events as `request_id`.
+- **Health**: `GET /health` returns `mongodb` as `demo`, `not_configured`, `unreachable` or `connected`. `connected` is reported only after a ping succeeds. Live mode with an unreachable database returns HTTP 503. The app starts even if Atlas is down, so this endpoint can report it.
+- **Errors** are `{"error": {"code", "message", "request_id"}}`. Codes include `validation_error`, `demo_mode`, `database_unavailable`, `database_timeout`, `llm_provider_error`, `llm_timeout`, `embedding_provider_error`, `execution_limit_exceeded`, `timeout`, `internal_error`. Stack traces and exception messages go only to the redacted server log.
 
 ## Collections used
 `chunked_docs`, `full_docs`, `agent_execution_events`, `quiz_attempts`, plus LangGraph's `checkpoints` / `checkpoint_writes` in `checkpointing_db`.

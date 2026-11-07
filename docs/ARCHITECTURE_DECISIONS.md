@@ -25,3 +25,18 @@ Vite + React + TypeScript in `frontend/`. The static page remains until the play
 
 ## 8. Dependency pinning (Proposed)
 Pin to versions that were installed and the tests run against, recorded in a lock file. langchain-openai and voyageai are pinned only after being installed and imported in CI.
+
+## 9. Three run modes, validated at startup (Accepted, session 3)
+`APP_MODE` is `auto`, `demo` or `live`. `auto` keeps the earlier behaviour (live only when all three credentials exist) so existing `.env` files still work; `live` is for deployments and fails at startup when anything is missing; `demo` never contacts services. Partial credentials in `auto` mode stay demo and `/health` lists the missing variable names. Validation errors name variables, never values, because pydantic's default messages echo the input.
+
+## 10. Start even if Atlas is down (Accepted, session 3)
+PyMongo connects lazily, and the lifespan only creates the client and logs a startup check. If Atlas is unreachable the app still starts, `/health` returns 503 in live mode with `mongodb: unreachable`, and requests fail with `database_unavailable`. Chosen over crashing at startup so an orchestrator sees a running but degraded service and a transient Atlas outage does not cause a restart loop. Revisit if a deployment target prefers fail-fast.
+
+## 11. Request IDs in pure ASGI middleware (Accepted, session 3)
+The ID lives in a `ContextVar` set before routing, so it reaches worker threads (FastAPI copies context) and is isolated per request. The middleware also turns unhandled exceptions into the standard 500 body so the `X-Request-ID` header is present on failures; Starlette's own 500 handler runs outside user middleware and would omit it.
+
+## 12. Database access through a lazy provider dependency (Accepted, session 3)
+Read routes receive a callable (`db_provider`) and call it after their config and allowlist checks. Passing the database itself made a missing database mask 403/422 responses. Tests override `db_provider` with a mongomock database; non-route code uses `mongo.set_client()`.
+
+## 13. Error classification by exception type and cause chain (Accepted, session 3)
+`errors.classify` maps PyMongo, OpenAI, Voyage, LangGraph and timeout exceptions to stable codes and HTTP statuses, following `__cause__`/`__context__` so wrapped failures keep their category. Only the code and a fixed message reach clients. Limitation: classification relies on SDK exception classes that tests construct by hand; real provider failures have not been observed.

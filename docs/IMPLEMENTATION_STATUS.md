@@ -2,21 +2,22 @@
 
 Statuses: COMPLETE AND VERIFIED, IMPLEMENTED BUT NOT VERIFIED, PARTIALLY IMPLEMENTED, NOT IMPLEMENTED.
 Mocked tests (mongomock, scripted model, in-memory checkpointer) never count as live verification.
-Last updated: session 1, after roadmap item 2. Remote: none configured. Tests: 27 pass (all mocked); ruff and mypy clean locally.
+Last updated: session 3, after roadmap items 3-4 and the error-handling part of 7. Remote: github.com/DharmiSapariya/AI-Agents-with-MongoDB-Certification (commits applied locally; push status is the user's to confirm). Tests: 99 pass (all mocked); ruff and mypy clean locally.
 
 ## Phase A: backend
 | Requirement | Status | Evidence / gap |
 |---|---|---|
-| Env configuration | PARTIALLY IMPLEMENTED | `config.py` (pydantic-settings); no per-environment profiles, no validation of URI shape |
+| Env configuration, startup validation | IMPLEMENTED BUT NOT VERIFIED | `config.py`, `tests/test_config.py` (mocked env). Modes auto/demo/live, ranges, URI scheme, embedding dims for known models; errors never contain values. Not exercised by a real deployment |
 | Pinned dependencies | PARTIALLY IMPLEMENTED | direct deps pinned in `pyproject.toml`; clean venv install + 27 tests pass. No lock file for transitive deps; langchain-openai/voyageai imported but never called live |
-| MongoDB connection lifecycle | PARTIALLY IMPLEMENTED | `mongo.py` lru_cache client, no close on shutdown, no pool settings |
-| Atlas connectivity / health check | IMPLEMENTED BUT NOT VERIFIED | `/health` pings; never run against Atlas |
-| Structured logging, request IDs | NOT IMPLEMENTED | |
+| MongoDB connection lifecycle | IMPLEMENTED BUT NOT VERIFIED | `mongo.py`, FastAPI lifespan; one client, timeouts/pool options checked on a real (unconnected) PyMongo client, closed on shutdown, injectable (`tests/test_database.py`). Never connected to Atlas |
+| Atlas connectivity / health check | IMPLEMENTED BUT NOT VERIFIED | `health.py`: demo / not_configured / unreachable / connected, 503 when live and not connected; tested with fake clients only |
+| Structured logging | IMPLEMENTED BUT NOT VERIFIED | `logging_config.py`: JSON lines, ids, configurable redaction (tests/test_logging.py). Smoke-run under uvicorn in demo mode only |
+| Request IDs | IMPLEMENTED BUT NOT VERIFIED | `middleware.py`: validated/generated, on responses, logs and execution events; concurrency tested with 30 parallel requests (mocked app) |
 | Input validation | PARTIALLY IMPLEMENTED | thread_id/message/limit validated (tests/test_api.py); no body size cap at the server |
 | Authentication, user/session ownership | NOT IMPLEMENTED | any caller can use any thread_id and read all traces |
 | Rate limiting | NOT IMPLEMENTED | |
-| LLM timeout / bounded retries | PARTIALLY IMPLEMENTED | ChatOpenAI timeout=30, max_retries=2 (unverified); Voyage call has none |
-| Exception handling | PARTIALLY IMPLEMENTED | graph errors re-raised as 500; no error schema |
+| LLM timeout / bounded retries | IMPLEMENTED BUT NOT VERIFIED | configurable for ChatOpenAI and the Voyage query call; never called live |
+| Exception handling | IMPLEMENTED BUT NOT VERIFIED | `errors.py`: uniform error body, Mongo/LLM/embedding/timeout/step-limit classification, no values or traces to clients (tests/test_errors.py). Provider exceptions are constructed in tests, not produced by real providers |
 
 ## Phase B: vector search
 | Requirement | Status | Evidence / gap |
@@ -34,7 +35,7 @@ Last updated: session 1, after roadmap item 2. Remote: none configured. Tests: 2
 |---|---|---|
 | Two course tools | IMPLEMENTED BUT NOT VERIFIED | executed in mocked loop only |
 | LangGraph agent/tools loop, routing, recursion limit | PARTIALLY IMPLEMENTED | verified with scripted model (tests/test_graph.py); real LLM tool selection untested |
-| Unknown-tool and tool-failure handling | PARTIALLY IMPLEMENTED | recorded as error event (mocked) |
+| Unknown-tool and tool-failure handling | PARTIALLY IMPLEMENTED | recorded as error event with an error_category and logged (mocked) |
 | Citations, insufficient-evidence answers | PARTIALLY IMPLEMENTED | prompt-only; no structured citations, no check |
 | Streaming | NOT IMPLEMENTED | |
 

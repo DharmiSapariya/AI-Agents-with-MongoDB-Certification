@@ -6,11 +6,11 @@ Live-Atlas items stay "pending live verification" until run against a real clust
 ## Phase A: backend
 1. docs: roadmap, status, decisions (done, session 1)
 2. chore: pin dependencies, add ruff and mypy config, run both in CI (done, session 1)
-3. feat(config): validate settings at startup; structured logging; request IDs
-4. feat(database): connection lifecycle (close on shutdown, pool/timeouts), health detail
+3. feat(config): validate settings at startup; structured logging; request IDs (done, session 3)
+4. feat(database): connection lifecycle (close on shutdown, pool/timeouts), health detail (done, session 3)
 5. feat(auth): users, password hashing, signed tokens, `/api/auth/*`
 6. feat(sessions): server-generated thread ids, ownership checks on chat, executions, db routes
-7. feat(security): per-user and per-IP rate limits, request size limit, safe error schema
+7. feat(security): per-user and per-IP rate limits, request size limit (safe error schema done, session 3)
 8. test(security): cross-user access tests for every route
 
 ## Phase B: retrieval
