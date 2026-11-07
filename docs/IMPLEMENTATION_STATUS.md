@@ -2,7 +2,8 @@
 
 Statuses: COMPLETE AND VERIFIED, IMPLEMENTED BUT NOT VERIFIED, PARTIALLY IMPLEMENTED, NOT IMPLEMENTED.
 Mocked tests (mongomock, scripted model, in-memory checkpointer) never count as live verification.
-Last updated: session 3, after roadmap items 3-4 and the error-handling part of 7. Remote: github.com/DharmiSapariya/AI-Agents-with-MongoDB-Certification (commits applied locally; push status is the user's to confirm). Tests: 99 pass (all mocked); ruff and mypy clean locally.
+Last updated: session 4, after roadmap item 5. Base: 4efcb32 (origin/main). Tests: 151 pass (all mocked), ruff and mypy clean.
+Legend: VERIFIED LOCALLY (mocked/demo/mongomock), VERIFIED LIVE (real providers), IMPLEMENTED, VERIFICATION PENDING, PARTIAL, PLANNED. Older rows below use the earlier four-status wording; IMPLEMENTED BUT NOT VERIFIED means IMPLEMENTED, VERIFICATION PENDING.
 
 ## Phase A: backend
 | Requirement | Status | Evidence / gap |
@@ -14,7 +15,8 @@ Last updated: session 3, after roadmap items 3-4 and the error-handling part of 
 | Structured logging | IMPLEMENTED BUT NOT VERIFIED | `logging_config.py`: JSON lines, ids, configurable redaction (tests/test_logging.py). Smoke-run under uvicorn in demo mode only |
 | Request IDs | IMPLEMENTED BUT NOT VERIFIED | `middleware.py`: validated/generated, on responses, logs and execution events; concurrency tested with 30 parallel requests (mocked app) |
 | Input validation | PARTIALLY IMPLEMENTED | thread_id/message/limit validated (tests/test_api.py); no body size cap at the server |
-| Authentication, user/session ownership | NOT IMPLEMENTED | any caller can use any thread_id and read all traces |
+| Authentication (register, login, current user) | VERIFIED LOCALLY (mongomock, 52 tests in test_auth.py/test_config.py) | `auth.py`, `routes_auth.py`. Argon2id, HS256 tokens with required claims, uniform login errors, unique email index, concurrent-registration test. Never run against Atlas; unique-index race enforced by mongomock in tests |
+| User/session ownership | PLANNED (item 6) | any caller can still use any thread_id and read all traces |
 | Rate limiting | NOT IMPLEMENTED | |
 | LLM timeout / bounded retries | IMPLEMENTED BUT NOT VERIFIED | configurable for ChatOpenAI and the Voyage query call; never called live |
 | Exception handling | IMPLEMENTED BUT NOT VERIFIED | `errors.py`: uniform error body, Mongo/LLM/embedding/timeout/step-limit classification, no values or traces to clients (tests/test_errors.py). Provider exceptions are constructed in tests, not produced by real providers |
@@ -73,3 +75,15 @@ No dataset, scripts or results. NOT IMPLEMENTED. No benchmark number exists.
 | CI | PARTIALLY IMPLEMENTED | `.github/workflows/ci.yml` runs ruff, mypy, pytest; never executed on GitHub |
 | Screenshots | NOT IMPLEMENTED | none until the app runs |
 | Credly link, badge vs project achievements | COMPLETE AND VERIFIED | README; certificate image checked against the claims |
+
+## Route policy after item 5
+Item 5 adds the reusable `get_current_user` dependency and protects exactly one route. Item 6 applies the policy to the rest.
+
+| Route | Today | Item 6 target |
+|---|---|---|
+| `GET /health`, `GET /` | public | public (health to be trimmed) |
+| `POST /api/auth/register`, `/login` | public (503 if auth unavailable) | public, rate limited (item 7) |
+| `GET /api/auth/me` | **requires a valid token** | authenticated |
+| `POST /api/chat`, `GET /api/executions`, `/api/executions/{id}`, `/api/mentor/explain/{id}` | public (503 in demo) | authenticated, owner-scoped |
+| `GET /api/db/collections`, `/api/db/sample/{name}` | public (503 in demo) | restricted/purpose-built |
+| `GET /api/mentor/teach/{c}`, `/api/mentor/quiz`, `POST /api/mentor/quiz` | public | teach/quiz questions public, grading and progress authenticated |

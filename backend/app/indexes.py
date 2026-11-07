@@ -13,5 +13,7 @@ def ensure_indexes(database) -> list[str]:
         database["full_docs"].create_index([("title", ASCENDING)], unique=True),
         database["chunked_docs"].create_index([("title", ASCENDING)]),
         database["quiz_attempts"].create_index([("user_id", ASCENDING)]),
+        # registration relies on this to reject concurrent duplicates
+        database["users"].create_index([("email", ASCENDING)], unique=True, name="email_unique"),
     ]
     return created

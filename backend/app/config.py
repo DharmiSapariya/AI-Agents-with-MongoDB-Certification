@@ -7,7 +7,7 @@ Error messages name the offending variable, never its value.
 """
 from typing import Literal
 
-from pydantic import Field, ValidationError, field_validator, model_validator
+from pydantic import Field, SecretStr, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Output dimensions the Voyage models support by default; unknown models are not checked.
@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     llm_max_retries: int = Field(2, ge=0, le=5)
     embedding_timeout_s: float = Field(15, gt=0, le=120)
     embedding_max_retries: int = Field(2, ge=0, le=5)
+    jwt_secret: SecretStr = SecretStr("")
+    jwt_issuer: str = Field("mongodb-ai-agent-platform", min_length=1)
+    jwt_audience: str = Field("mongodb-ai-agent-platform-api", min_length=1)
+    access_token_ttl_minutes: int = Field(30, ge=1, le=1440)
+    auth_max_concurrent_hashes: int = Field(4, ge=1, le=32)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     log_redact_patterns: list[str] = []
 
@@ -47,6 +52,13 @@ class Settings(BaseSettings):
     def _mongo_scheme(cls, v: str) -> str:
         if v and not v.startswith(("mongodb://", "mongodb+srv://")):
             raise ValueError("must start with mongodb:// or mongodb+srv://")
+        return v
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def _jwt_secret_length(cls, v: SecretStr) -> SecretStr:
+        if v.get_secret_value() and len(v.get_secret_value()) < 32:
+            raise ValueError("must be at least 32 characters")
         return v
 
     @field_validator("log_level", mode="before")
@@ -70,8 +82,10 @@ class Settings(BaseSettings):
         known = KNOWN_EMBEDDING_DIMS.get(self.embedding_model)
         if known and self.embedding_dims not in known:
             raise ValueError(f"EMBEDDING_DIMS does not match EMBEDDING_MODEL (expected one of {sorted(known)})")
-        if self.app_mode == "live" and self.missing_credentials:
-            raise ValueError("APP_MODE=live requires " + ", ".join(self.missing_credentials))
+        if self.app_mode == "live":
+            missing = self.missing_credentials + ([] if self.jwt_secret.get_secret_value() else ["JWT_SECRET"])
+            if missing:
+                raise ValueError("APP_MODE=live requires " + ", ".join(missing))
         return self
 
     @property
@@ -84,6 +98,18 @@ class Settings(BaseSettings):
     def configured(self) -> bool:
         """True when the app runs live (all credentials present and mode is not demo)."""
         return self.app_mode != "demo" and not self.missing_credentials
+
+    @property
+    def auth_enabled(self) -> bool:
+        """Accounts need a store (MongoDB) and a signing key; demo mode never has them."""
+        return self.app_mode != "demo" and bool(self.mongodb_uri) and bool(self.jwt_secret.get_secret_value())
+
+    @property
+    def auth_unavailable_reason(self) -> str | None:
+        if self.app_mode == "demo":
+            return "demo mode has no account store"
+        missing = [n for n, v in (("MONGODB_URI", self.mongodb_uri), ("JWT_SECRET", self.jwt_secret.get_secret_value())) if not v]
+        return "set " + " and ".join(missing) if missing else None
 
     @property
     def mode(self) -> str:

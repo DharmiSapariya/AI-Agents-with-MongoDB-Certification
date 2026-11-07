@@ -27,11 +27,37 @@ class ApiError(Exception):
     code = "internal_error"
     message = "Internal server error"
 
-    def __init__(self, message: str | None = None, *, code: str | None = None, status_code: int | None = None):
+    headers: dict[str, str] | None = None
+
+    def __init__(self, message: str | None = None, *, code: str | None = None, status_code: int | None = None,
+                 headers: dict[str, str] | None = None):
         super().__init__(message or self.message)
         self.message = message or self.message
         self.code = code or self.code
         self.status_code = status_code or self.status_code
+        self.headers = headers or self.headers
+
+
+class AuthUnavailable(ApiError):
+    status_code, code = 503, "auth_unavailable"
+
+
+class AuthenticationError(ApiError):
+    """401 with an RFC 6750 challenge. invalid=True adds error="invalid_token"."""
+
+    status_code = 401
+
+    def __init__(self, *, invalid: bool, code: str, message: str):
+        challenge = 'Bearer error="invalid_token"' if invalid else "Bearer"
+        super().__init__(message, code=code, headers={"WWW-Authenticate": challenge})
+
+
+class InvalidCredentials(ApiError):
+    status_code, code, message = 401, "invalid_credentials", "Invalid email or password."
+
+
+class EmailTaken(ApiError):
+    status_code, code, message = 409, "email_taken", "An account with this email already exists."
 
 
 class DemoMode(ApiError):
@@ -133,7 +159,7 @@ async def _handle_known(request: Request, exc: Exception) -> JSONResponse:
         logger.error("request_failed", exc_info=exc, extra={"fields": fields})
     else:
         log(logger, logging.WARNING, "request_rejected", **fields)
-    return JSONResponse(error_body(err.code, err.message), status_code=err.status_code)
+    return JSONResponse(error_body(err.code, err.message), status_code=err.status_code, headers=err.headers)
 
 
 async def _handle_http(request: Request, error: Exception) -> JSONResponse:

@@ -11,9 +11,11 @@ from pydantic import BaseModel, Field
 
 from . import health, mentor, mongo
 from .config import settings
+from .deps import db_provider
 from .errors import DemoMode, install_handlers
 from .logging_config import configure_logging, log
 from .middleware import RequestIdMiddleware
+from .routes_auth import router as auth_router
 
 configure_logging(settings.log_level, settings.log_redact_patterns)
 
@@ -29,12 +31,15 @@ async def lifespan(_: FastAPI):
         state = await run_in_threadpool(health.database_state)
         log(logger, logging.INFO if state["state"] == "connected" else logging.ERROR,
             "database_check_at_startup", **state)
+    if not settings.auth_enabled:
+        log(logger, logging.INFO, "auth_unavailable", reason=settings.auth_unavailable_reason)
     yield
     mongo.close()
 
 
 app = FastAPI(title="MongoDB AI Agent Platform", version="0.1.0", lifespan=lifespan)
 install_handlers(app)
+app.include_router(auth_router)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://localhost:8000"],
                    allow_methods=["GET", "POST"], allow_headers=["*"], expose_headers=["X-Request-ID"])
 app.add_middleware(RequestIdMiddleware)
@@ -61,15 +66,6 @@ def _require_config():
 def health_check():
     body, status = health.report()
     return JSONResponse(body, status_code=status)
-
-
-def db_provider():
-    """FastAPI dependency returning a zero-argument callable that yields the database.
-
-    Routes call it only after their config checks, so a missing database cannot mask a
-    validation or authorization error. Tests override it with app.dependency_overrides.
-    """
-    return mongo.db
 
 
 @app.post("/api/chat")

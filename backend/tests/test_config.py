@@ -8,7 +8,8 @@ SECRET_URI = "mongodb+srv://user:hunter2@cluster.example.net/db"
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch):
     for name in ("APP_MODE", "MONGODB_URI", "OPENAI_API_KEY", "VOYAGE_API_KEY", "EMBEDDING_MODEL",
-                 "EMBEDDING_DIMS", "MAX_GRAPH_STEPS", "LOG_LEVEL", "LOG_REDACT_PATTERNS"):
+                 "EMBEDDING_DIMS", "MAX_GRAPH_STEPS", "LOG_LEVEL", "LOG_REDACT_PATTERNS", "JWT_SECRET",
+                 "ACCESS_TOKEN_TTL_MINUTES"):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -83,3 +84,37 @@ def test_bad_environment_value_gives_clear_error(monkeypatch):
     monkeypatch.setenv("MAX_GRAPH_STEPS", "lots")
     with pytest.raises(ConfigError, match="MAX_GRAPH_STEPS"):
         load()
+
+
+KEY = "k" * 40
+
+
+def test_short_jwt_secret_is_rejected_without_echoing_it():
+    with pytest.raises(ConfigError) as err:
+        load(jwt_secret="tooshort-secret")
+    assert "JWT_SECRET" in str(err.value) and "tooshort-secret" not in str(err.value)
+
+
+def test_live_mode_requires_a_signing_key():
+    with pytest.raises(ConfigError, match="JWT_SECRET"):
+        full(app_mode="live")
+    assert full(app_mode="live", jwt_secret=KEY).mode == "live"
+
+
+def test_auth_is_enabled_only_with_a_store_and_a_key_outside_demo():
+    assert not load().auth_enabled and not full().auth_enabled
+    assert full(jwt_secret=KEY).auth_enabled
+    assert not full(jwt_secret=KEY, app_mode="demo").auth_enabled
+    assert load(jwt_secret=KEY).auth_unavailable_reason == "set MONGODB_URI"
+    assert full().auth_unavailable_reason == "set JWT_SECRET"
+    assert full(jwt_secret=KEY, app_mode="demo").auth_unavailable_reason == "demo mode has no account store"
+
+
+@pytest.mark.parametrize("ttl", [0, 1441])
+def test_token_lifetime_is_bounded(ttl):
+    with pytest.raises(ConfigError, match="ACCESS_TOKEN_TTL_MINUTES"):
+        load(access_token_ttl_minutes=ttl)
+
+
+def test_signing_key_is_hidden_in_repr():
+    assert KEY not in repr(load(jwt_secret=KEY))

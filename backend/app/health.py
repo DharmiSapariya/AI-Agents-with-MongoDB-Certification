@@ -30,6 +30,7 @@ def report() -> tuple[dict, int]:
         "mode": settings.mode,
         "configured": settings.configured,
         "mongodb": database["state"],
+        "auth": "enabled" if settings.auth_enabled else "unavailable",
         "database": database,
         "missing_credentials": settings.missing_credentials if settings.mode == "demo" else [],
     }

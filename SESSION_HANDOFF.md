@@ -1,13 +1,13 @@
 # Session handoff
 
-Session 3. Branch `integrate` locally (to be pushed to `main` of github.com/DharmiSapariya/AI-Agents-with-MongoDB-Certification). Push status: not pushed from the build environment.
+**Session 4, roadmap item 5 (authentication).** Base `4efcb32` (origin/main, Session 3 confirmed there). Working branch `session4-auth`, one commit on top: `feat(auth): add accounts, Argon2id password hashing and signed access tokens`. Not pushed. READY TO PUBLISH.
 
-Run: `cd backend && pip install -e ".[dev]" && pytest -q && ruff check . ../scripts && mypy app`
-Result: 99 passed (all mocked: fake clients, mongomock, scripted model), ruff and mypy clean.
+Checks run from `backend/` in a clean venv (Python 3.12, `pip install -e ".[dev]"`): `pytest -q` 151 passed; `ruff check . ../scripts` clean; `mypy app` clean (19 files); `git diff --check` clean. All mocked (mongomock, fake clients). One manual end-to-end run with production Argon2 parameters through the real ASGI app with mongomock: register 201, login 200 (~200 ms), `/me` 200, bad logins 401. Not run: Atlas, real MongoDB unique-index race, GitHub CI.
 
-Done this session: startup settings validation (APP_MODE), JSON logging with redaction, request IDs, MongoDB lifespan and honest health states, standard error responses (roadmap items 3, 4 and the error schema part of 7).
+Decisions to keep: ASCII-only email normalization; 12-128 char passwords; Argon2id library defaults; constant `DUMMY_HASH` for unknown users (regenerate if parameters change; test guards it); HS256 with all claims required; plain `def` routes plus a hash semaphore; 409 on duplicate email (documented enumeration trade-off); auth routes return 503 `auth_unavailable` in demo or without MONGODB_URI/JWT_SECRET; `db_provider` now lives in `app/deps.py` (still importable from `app.main`).
 
-Next (next session): roadmap items 5-8: authentication (users collection, password hashing, signed tokens), server-generated thread ids with ownership records, rate limiting and request size limits, cross-user security tests. Do not start the React app before these.
+Only `GET /api/auth/me` requires a token. Everything else is still open (see "Route policy after item 5" in docs/IMPLEMENTATION_STATUS.md).
 
-Read first: docs/IMPLEMENTATION_STATUS.md, docs/ARCHITECTURE_DECISIONS.md (ADR 4 is the proposed auth design), README.md (Configuration, Operations).
-Still unverified live: Atlas connection, `$vectorSearch`, checkpoint restore, real OpenAI/Voyage calls, CI on GitHub. Needs from the user: Atlas URI with a vector index, OpenAI and Voyage keys.
+Next, first action: roadmap item 6. Inventory routes against that table, add a `sessions` collection (server-generated ids, `user_id` owner), make `/api/chat` authenticated and create/resume sessions server-side, scope executions/traces by `user_id` (add `user_id` to Tracer events), choose 404 for another user's resource, and define the legacy-unowned-data policy (hidden, never auto-claimed).
+
+Needs from the user: Atlas URI with a vector index, OpenAI and Voyage keys; a `JWT_SECRET` in `.env` for live runs.
