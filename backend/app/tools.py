@@ -7,6 +7,7 @@ from typing import List
 from langchain_core.tools import tool
 
 from .config import settings
+from .errors import EmbeddingError
 from .mongo import db
 from .tracing import emit
 
@@ -21,8 +22,13 @@ def wrap_document(title: str, body: str) -> str:
 
 def generate_embedding(text: str) -> List[float]:
     import voyageai
-    c = voyageai.Client(api_key=settings.voyage_api_key)
-    return [float(x) for x in c.embed([text], model=settings.embedding_model, input_type="query").embeddings[0]]
+    try:
+        c = voyageai.Client(api_key=settings.voyage_api_key, max_retries=settings.embedding_max_retries,
+                            timeout=settings.embedding_timeout_s)
+        result = c.embed([text], model=settings.embedding_model, input_type="query")
+    except Exception as exc:
+        raise EmbeddingError() from exc
+    return [float(x) for x in result.embeddings[0]]
 
 
 @tool

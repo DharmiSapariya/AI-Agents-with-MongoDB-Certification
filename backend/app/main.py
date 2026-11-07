@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from . import health, mentor, mongo
 from .config import settings
+from .errors import DemoMode, install_handlers
 from .logging_config import configure_logging, log
 from .middleware import RequestIdMiddleware
 
@@ -33,6 +34,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="MongoDB AI Agent Platform", version="0.1.0", lifespan=lifespan)
+install_handlers(app)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://localhost:8000"],
                    allow_methods=["GET", "POST"], allow_headers=["*"], expose_headers=["X-Request-ID"])
 app.add_middleware(RequestIdMiddleware)
@@ -52,7 +54,7 @@ class QuizIn(BaseModel):
 
 def _require_config():
     if not settings.configured:
-        raise HTTPException(503, "Demo mode: set MONGODB_URI, OPENAI_API_KEY and VOYAGE_API_KEY in .env")
+        raise DemoMode("Demo mode: set MONGODB_URI, OPENAI_API_KEY and VOYAGE_API_KEY in .env")
 
 
 @app.get("/health")

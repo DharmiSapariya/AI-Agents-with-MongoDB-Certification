@@ -89,3 +89,20 @@ def test_threads_do_not_share_events(agent):
     graph.run("two", "q2")
     assert {e["thread_id"] for e in events(database, "one")} == {"one"}
     assert {e["thread_id"] for e in events(database, "two")} == {"two"}
+
+
+def test_tool_failure_is_recorded_with_its_category_and_the_agent_continues(agent, monkeypatch):
+    from pymongo.errors import ServerSelectionTimeoutError
+
+    model, database = agent
+
+    def unreachable():
+        raise ServerSelectionTimeoutError("down")
+
+    monkeypatch.setattr(tools, "db", unreachable)
+    model.replies = [tool_call("get_page_content_for_summarization", {"user_query": "Aggregation"}),
+                     AIMessage(content="I could not read the page.")]
+    result = graph.run("t9", "summarize Aggregation")
+    assert result["answer"] == "I could not read the page."
+    end = [e for e in events(database, "t9") if e["type"] == "tool_end"][0]
+    assert end["data"]["status"] == "error" and end["data"]["error_category"] == "database_unavailable"

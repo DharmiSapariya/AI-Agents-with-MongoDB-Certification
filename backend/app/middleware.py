@@ -8,6 +8,7 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .context import request_id_var
+from .errors import error_body
 from .logging_config import log
 
 logger = logging.getLogger("app.http")
@@ -55,8 +56,7 @@ class RequestIdMiddleware:
                 logger.exception("unhandled_exception", extra={"fields": {"error_category": "internal"}})
                 if response_started:
                     raise
-                body = {"error": {"code": "internal_error", "message": "Internal server error",
-                                  "request_id": request_id}}
+                body = error_body("internal_error", "Internal server error")
                 await JSONResponse(body, status_code=500)(scope, receive, send_with_id)
         finally:
             route = scope.get("route")

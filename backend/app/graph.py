@@ -12,6 +12,7 @@ from typing_extensions import TypedDict
 
 from .config import settings
 from .context import execution_id_var
+from .errors import classify
 from .logging_config import log
 from .mongo import client, db
 from .routing import route_tools
@@ -36,7 +37,7 @@ class GraphState(TypedDict):
 def build_app():
     from langchain_openai import ChatOpenAI
     llm = ChatOpenAI(api_key=settings.openai_api_key, temperature=0, model=settings.llm_model,
-                     timeout=30, max_retries=2)
+                     timeout=settings.llm_timeout_s, max_retries=settings.llm_max_retries)
     prompt = ChatPromptTemplate.from_messages([("system", SYSTEM), MessagesPlaceholder("messages")])
     prompt = prompt.partial(tool_names=", ".join(t.name for t in TOOLS))
     chain = prompt | llm.bind_tools(TOOLS)
@@ -59,9 +60,13 @@ def build_app():
             try:
                 obs, status = by_name[c["name"]].invoke(c["args"]), "ok"
             except Exception as exc:
+                category = classify(exc).code
                 obs, status = f"Tool error: {type(exc).__name__}", "error"
+                logger.warning("tool_failed", exc_info=exc, extra={"fields": {
+                    "tool": c["name"], "error_category": category, "exc_type": type(exc).__name__}})
             emit("tool_end", node="tools", tool=c["name"], status=status, result_chars=len(obs),
-                 result_preview=obs[:300], duration_ms=round((time.perf_counter() - t0) * 1000, 1))
+                 result_preview=obs[:300], duration_ms=round((time.perf_counter() - t0) * 1000, 1),
+                 **({"error_category": category} if status == "error" else {}))
             out.append(ToolMessage(content=obs, tool_call_id=c["id"]))
         return {"messages": out}
 
