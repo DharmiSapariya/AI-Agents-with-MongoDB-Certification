@@ -1,19 +1,38 @@
+import logging
 import re
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from . import mentor
+from . import health, mentor, mongo
 from .config import settings
-from .logging_config import configure_logging
+from .logging_config import configure_logging, log
 from .middleware import RequestIdMiddleware
 
 configure_logging(settings.log_level, settings.log_redact_patterns)
 
-app = FastAPI(title="MongoDB AI Agent Platform", version="0.1.0")
+logger = logging.getLogger("app.main")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Create the MongoDB client once in live mode; start even if Atlas is unreachable so /health can say so."""
+    log(logger, logging.INFO, "startup", mode=settings.mode, missing=settings.missing_credentials)
+    if settings.configured:
+        mongo.connect()
+        state = await run_in_threadpool(health.database_state)
+        log(logger, logging.INFO if state["state"] == "connected" else logging.ERROR,
+            "database_check_at_startup", **state)
+    yield
+    mongo.close()
+
+
+app = FastAPI(title="MongoDB AI Agent Platform", version="0.1.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://localhost:8000"],
                    allow_methods=["GET", "POST"], allow_headers=["*"], expose_headers=["X-Request-ID"])
 app.add_middleware(RequestIdMiddleware)
@@ -37,16 +56,18 @@ def _require_config():
 
 
 @app.get("/health")
-def health():
-    out = {"configured": settings.configured, "mode": "live" if settings.configured else "demo", "mongodb": "not_checked"}
-    if settings.mongodb_uri:
-        try:
-            from .mongo import client
-            client().admin.command("ping")
-            out["mongodb"] = "ok"
-        except Exception as exc:
-            out["mongodb"] = f"error: {type(exc).__name__}"
-    return out
+def health_check():
+    body, status = health.report()
+    return JSONResponse(body, status_code=status)
+
+
+def db_provider():
+    """FastAPI dependency returning a zero-argument callable that yields the database.
+
+    Routes call it only after their config checks, so a missing database cannot mask a
+    validation or authorization error. Tests override it with app.dependency_overrides.
+    """
+    return mongo.db
 
 
 @app.post("/api/chat")
@@ -57,32 +78,30 @@ def chat(body: ChatIn):
 
 
 @app.get("/api/executions")
-def executions(limit: int = Query(20, ge=1, le=100)):
+def executions(limit: int = Query(20, ge=1, le=100), get_db=Depends(db_provider)):
     _require_config()
-    from .mongo import db
-    rows = db()["agent_execution_events"].find({"type": "execution_end"}, {"_id": 0}).sort("ts", -1).limit(limit)
+    rows = get_db()["agent_execution_events"].find({"type": "execution_end"}, {"_id": 0}).sort("ts", -1).limit(limit)
     return list(rows)
 
 
-def _events(execution_id: str):
-    from .mongo import db
-    return list(db()["agent_execution_events"].find({"execution_id": execution_id}, {"_id": 0}).sort("seq", 1))
+def _events(database, execution_id: str):
+    return list(database["agent_execution_events"].find({"execution_id": execution_id}, {"_id": 0}).sort("seq", 1))
 
 
 @app.get("/api/executions/{execution_id}")
-def execution(execution_id: str):
+def execution(execution_id: str, get_db=Depends(db_provider)):
     _require_config()
     if not re.match(ID_RE, execution_id):
         raise HTTPException(400, "bad id")
-    return _events(execution_id)
+    return _events(get_db(), execution_id)
 
 
 @app.get("/api/mentor/explain/{execution_id}")
-def mentor_explain(execution_id: str):
+def mentor_explain(execution_id: str, get_db=Depends(db_provider)):
     _require_config()
     if not re.match(ID_RE, execution_id):
         raise HTTPException(400, "bad id")
-    events = _events(execution_id)
+    events = _events(get_db(), execution_id)
     if not events:
         raise HTTPException(404, "execution not found")
     return mentor.explain_execution(events)
@@ -105,25 +124,23 @@ def mentor_quiz():
 def mentor_grade(body: QuizIn):
     res = mentor.grade(body.answers)
     if settings.configured:
-        from .mongo import db
-        db()["quiz_attempts"].insert_one({"user_id": body.user_id, **res})
+        mongo.db()["quiz_attempts"].insert_one({"user_id": body.user_id, **res})
     return res
 
 
 @app.get("/api/db/collections")
-def collections():
+def collections(get_db=Depends(db_provider)):
     _require_config()
-    from .mongo import db
-    return [{"name": n, "count": db()[n].estimated_document_count()} for n in sorted(db().list_collection_names())]
+    database = get_db()
+    return [{"name": n, "count": database[n].estimated_document_count()} for n in sorted(database.list_collection_names())]
 
 
 @app.get("/api/db/sample/{name}")
-def sample(name: str):
+def sample(name: str, get_db=Depends(db_provider)):
     _require_config()
     if name not in READABLE:
         raise HTTPException(403, "collection not readable")
-    from .mongo import db
-    docs = list(db()[name].find({}, {"embedding": 0}).limit(3))
+    docs = list(get_db()[name].find({}, {"embedding": 0}).limit(3))
     return [{**d, "_id": str(d["_id"])} for d in docs]
 
 

@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     vector_index: str = Field("vector_index", min_length=1)
     max_graph_steps: int = Field(12, ge=2, le=50)
     mongo_timeout_ms: int = Field(5000, ge=500, le=60000)
+    mongo_socket_timeout_ms: int = Field(30000, ge=1000, le=300000)
     mongo_max_pool_size: int = Field(20, ge=1, le=200)
     llm_timeout_s: float = Field(30, gt=0, le=300)
     llm_max_retries: int = Field(2, ge=0, le=5)
