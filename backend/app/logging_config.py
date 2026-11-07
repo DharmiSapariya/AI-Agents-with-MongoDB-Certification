@@ -8,14 +8,11 @@ import logging
 import re
 import sys
 import traceback
-from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import Any
 
+from .context import execution_id_var, request_id_var
 from .tracing import redact
-
-request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
-execution_id_var: ContextVar[str | None] = ContextVar("execution_id", default=None)
 
 _HANDLER_FLAG = "_app_json_handler"
 

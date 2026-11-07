@@ -4,7 +4,8 @@ import logging
 
 import pytest
 
-from app.logging_config import JsonFormatter, configure_logging, execution_id_var, log, request_id_var
+from app.context import execution_id_var, request_id_var
+from app.logging_config import JsonFormatter, configure_logging, log
 from app.tracing import redact
 
 

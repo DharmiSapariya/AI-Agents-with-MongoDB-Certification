@@ -8,10 +8,15 @@ from pydantic import BaseModel, Field
 
 from . import mentor
 from .config import settings
+from .logging_config import configure_logging
+from .middleware import RequestIdMiddleware
+
+configure_logging(settings.log_level, settings.log_redact_patterns)
 
 app = FastAPI(title="MongoDB AI Agent Platform", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://localhost:8000"],
-                   allow_methods=["GET", "POST"], allow_headers=["*"])
+                   allow_methods=["GET", "POST"], allow_headers=["*"], expose_headers=["X-Request-ID"])
+app.add_middleware(RequestIdMiddleware)
 ID_RE = r"^[A-Za-z0-9_\-]{1,64}$"
 READABLE = {"chunked_docs", "full_docs", "agent_execution_events", "quiz_attempts"}
 

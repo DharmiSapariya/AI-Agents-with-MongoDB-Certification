@@ -1,4 +1,5 @@
 """Agent One: LangGraph agent <-> tools cycle with MongoDB checkpointing and event tracing."""
+import logging
 import time
 from typing import Annotated
 
@@ -10,10 +11,14 @@ from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 
 from .config import settings
+from .context import execution_id_var
+from .logging_config import log
 from .mongo import client, db
 from .routing import route_tools
 from .tools import TOOLS
 from .tracing import CURRENT, Tracer, emit
+
+logger = logging.getLogger("app.graph")
 
 SYSTEM = (
     "You are a helpful AI assistant with tools to answer questions and summarize MongoDB documentation. "
@@ -78,16 +83,26 @@ def run(thread_id: str, user_input: str) -> dict:
     _app = _app or build_app()
     tracer = Tracer(db()["agent_execution_events"], thread_id, "primary", user_input, settings.llm_model)
     token = CURRENT.set(tracer)
+    exec_token = execution_id_var.set(tracer.execution_id)
+    started = time.perf_counter()
+    log(logger, logging.INFO, "execution_started", agent="primary", thread_id=thread_id,
+        input_chars=len(user_input), model=settings.llm_model)
     try:
         result = _app.invoke({"messages": [("user", user_input)]},
                              {"configurable": {"thread_id": thread_id},
                               "recursion_limit": settings.max_graph_steps})
         answer = result["messages"][-1].content
         tracer.finish("success", answer)
+        log(logger, logging.INFO, "execution_finished", status="success", events=tracer.seq,
+            fully_recorded=tracer.recorded_ok, duration_ms=round((time.perf_counter() - started) * 1000, 1))
         return {"answer": answer, "execution_id": tracer.execution_id, "fully_recorded": tracer.recorded_ok}
     except Exception as exc:
         tracer.emit("error", error=f"{type(exc).__name__}: {exc}")
         tracer.finish("error")
+        log(logger, logging.ERROR, "execution_finished", status="error", events=tracer.seq,
+            exc_type=type(exc).__name__, fully_recorded=tracer.recorded_ok,
+            duration_ms=round((time.perf_counter() - started) * 1000, 1))
         raise
     finally:
+        execution_id_var.reset(exec_token)
         CURRENT.reset(token)

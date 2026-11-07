@@ -6,6 +6,8 @@ from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import Any, Sequence
 
+from .context import request_id_var
+
 SECRET_RE = re.compile(
     r"(mongodb(\+srv)?://[^\s\"']+|sk-[A-Za-z0-9_\-]{10,}|pa-[A-Za-z0-9_\-]{10,}"
     r"|bearer\s+[A-Za-z0-9._~+/\-]+=*"
@@ -50,7 +52,7 @@ class Tracer:
         self.seq += 1
         doc = {
             "execution_id": self.execution_id, "thread_id": self.thread_id, "agent": self.agent,
-            "seq": self.seq, "type": type_, "node": node,
+            "seq": self.seq, "type": type_, "node": node, "request_id": request_id_var.get(),
             "ts": datetime.now(timezone.utc), "data": redact(data),
         }
         try:
