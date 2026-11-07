@@ -4,22 +4,31 @@ import time
 import uuid
 from contextvars import ContextVar
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Sequence
 
 SECRET_RE = re.compile(
     r"(mongodb(\+srv)?://[^\s\"']+|sk-[A-Za-z0-9_\-]{10,}|pa-[A-Za-z0-9_\-]{10,}"
+    r"|bearer\s+[A-Za-z0-9._~+/\-]+=*"
     r"|(api[_-]?key|token|password)\s*[=:]\s*\S+)", re.I)
-SENSITIVE_KEYS = {"api_key", "openai_api_key", "voyage_api_key", "password", "token", "mongodb_uri"}
+SENSITIVE_KEYS = {"api_key", "openai_api_key", "voyage_api_key", "password", "token", "mongodb_uri",
+                  "authorization", "cookie", "set-cookie", "secret"}
 
 
-def redact(value: Any) -> Any:
-    """Recursively mask secrets in strings and sensitive dict keys."""
+def redact(value: Any, extra_patterns: Sequence[re.Pattern] = ()) -> Any:
+    """Recursively mask secrets in strings and sensitive dict keys.
+
+    extra_patterns are additional compiled regexes whose matches are masked in strings.
+    """
     if isinstance(value, str):
-        return SECRET_RE.sub("[REDACTED]", value)
+        value = SECRET_RE.sub("[REDACTED]", value)
+        for pattern in extra_patterns:
+            value = pattern.sub("[REDACTED]", value)
+        return value
     if isinstance(value, dict):
-        return {k: "[REDACTED]" if k.lower() in SENSITIVE_KEYS else redact(v) for k, v in value.items()}
+        return {k: "[REDACTED]" if str(k).lower() in SENSITIVE_KEYS else redact(v, extra_patterns)
+                for k, v in value.items()}
     if isinstance(value, (list, tuple)):
-        return [redact(v) for v in value]
+        return [redact(v, extra_patterns) for v in value]
     return value
 
 
