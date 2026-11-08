@@ -1,13 +1,13 @@
 # Session handoff
 
-**Session 4, roadmap item 5 (authentication).** Base `4efcb32` (origin/main, Session 3 confirmed there). Working branch `session4-auth`, one commit on top: `feat(auth): add accounts, Argon2id password hashing and signed access tokens`. Not pushed. READY TO PUBLISH.
+**Roadmap item 6 (sessions and ownership).** Base `ef357f0` (origin/main, item 5 confirmed there; no earlier item 6 existed anywhere on origin). Branch `session5-ownership` (in the build clone) holds one commit: `feat(sessions): add server-generated sessions and owner-scoped access`. Not pushed. READY TO PUBLISH.
 
-Checks run from `backend/` in a clean venv (Python 3.12, `pip install -e ".[dev]"`): `pytest -q` 151 passed; `ruff check . ../scripts` clean; `mypy app` clean (19 files); `git diff --check` clean. All mocked (mongomock, fake clients). One manual end-to-end run with production Argon2 parameters through the real ASGI app with mongomock: register 201, login 200 (~200 ms), `/me` 200, bad logins 401. Not run: Atlas, real MongoDB unique-index race, GitHub CI.
+Checks (clean venv, Python 3.12): `pytest -q` 174 passed; `ruff check . ../scripts` clean; `mypy app` clean (21 files); `git diff --check` clean. All mocked (mongomock, fake graph). Mutation check: removing the owner filters in `routes_api.py`/`sessions.py` fails 6 ownership tests. Frontend flow exercised with a stubbed fetch in node. Not run: Atlas, real providers, GitHub CI.
 
-Decisions to keep: ASCII-only email normalization; 12-128 char passwords; Argon2id library defaults; constant `DUMMY_HASH` for unknown users (regenerate if parameters change; test guards it); HS256 with all claims required; plain `def` routes plus a hash semaphore; 409 on duplicate email (documented enumeration trade-off); auth routes return 503 `auth_unavailable` in demo or without MONGODB_URI/JWT_SECRET; `db_provider` now lives in `app/deps.py` (still importable from `app.main`).
+Changes to existing tests (all forced by the new contract, intent kept): chat now takes `session_id` and a token; executions, explorer and chat tests run through the `signed_in` fixture (tests/conftest.py); health no longer publishes `reason` or `missing_credentials`; `db_provider` is imported from `app.deps`.
 
-Only `GET /api/auth/me` requires a token. Everything else is still open (see "Route policy after item 5" in docs/IMPLEMENTATION_STATUS.md).
+Decisions to keep: see ADR 15. Identity only from the token; 404 for foreign and missing; legacy unowned records hidden, never claimed; explorer is a fixed allowlist.
 
-Next, first action: roadmap item 6. Inventory routes against that table, add a `sessions` collection (server-generated ids, `user_id` owner), make `/api/chat` authenticated and create/resume sessions server-side, scope executions/traces by `user_id` (add `user_id` to Tracer events), choose 404 for another user's resource, and define the legacy-unowned-data policy (hidden, never auto-claimed).
+**Next: roadmap item 7 (abuse limits).** First actions: (1) inventory route cost per docs/IMPLEMENTATION_STATUS.md route table; (2) in-process limiter with an injectable clock, separate buckets for register, login and chat, IP limit before Argon2/graph and a per-user limit after auth; (3) client IP from the ASGI scope only, no forwarded headers unless a trusted-proxy setting exists; (4) request body byte cap enforced while receiving (ASGI-level), 413 and 429 in the standard error shape with `Retry-After` and the request id; (5) bound the log volume of expected 4xx/5xx (ADR 15 known gap) and keep chat message bounds. Then item 8 (exhaustive cross-user matrix).
 
-Needs from the user: Atlas URI with a vector index, OpenAI and Voyage keys; a `JWT_SECRET` in `.env` for live runs.
+Needs from the user: Atlas URI with a vector index, OpenAI and Voyage keys, `JWT_SECRET` for live runs.

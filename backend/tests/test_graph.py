@@ -106,3 +106,13 @@ def test_tool_failure_is_recorded_with_its_category_and_the_agent_continues(agen
     assert result["answer"] == "I could not read the page."
     end = [e for e in events(database, "t9") if e["type"] == "tool_end"][0]
     assert end["data"]["status"] == "error" and end["data"]["error_category"] == "database_unavailable"
+
+
+def test_run_stamps_events_with_the_owner(agent):
+    model, database = agent
+    model.replies = [AIMessage(content="ok")]
+    graph.run("t10", "hi", user_id="u9")
+    assert {e["user_id"] for e in events(database, "t10")} == {"u9"}
+    model.replies = [AIMessage(content="ok")]
+    graph.run("t11", "hi")
+    assert {e["user_id"] for e in events(database, "t11")} == {None}

@@ -60,6 +60,16 @@ class EmailTaken(ApiError):
     status_code, code, message = 409, "email_taken", "An account with this email already exists."
 
 
+class SessionNotFound(ApiError):
+    """Also used for sessions owned by someone else, so the two cases look identical."""
+
+    status_code, code, message = 404, "session_not_found", "Session not found."
+
+
+class ExecutionNotFound(ApiError):
+    status_code, code, message = 404, "execution_not_found", "Execution not found."
+
+
 class DemoMode(ApiError):
     status_code, code = 503, "demo_mode"
 

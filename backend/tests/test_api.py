@@ -18,18 +18,17 @@ def test_demo_mode_returns_503_for_live_endpoints(monkeypatch):
 
 
 @pytest.mark.parametrize("limit", [0, -5, 101])
-def test_executions_limit_is_validated(monkeypatch, limit):
-    monkeypatch.setattr(type(settings), "configured", property(lambda self: True))
+def test_executions_limit_is_validated(signed_in, limit):
     assert client.get(f"/api/executions?limit={limit}").status_code == 422
 
 
-def test_chat_rejects_bad_thread_id_and_empty_message():
-    assert client.post("/api/chat", json={"thread_id": "../x", "message": "hi"}).status_code == 422
-    assert client.post("/api/chat", json={"thread_id": "ok", "message": ""}).status_code == 422
+def test_chat_rejects_client_thread_ids_bad_session_ids_and_empty_messages(signed_in):
+    assert client.post("/api/chat", json={"thread_id": "ok", "message": "hi"}).status_code == 422
+    assert client.post("/api/chat", json={"session_id": "../x", "message": "hi"}).status_code == 422
+    assert client.post("/api/chat", json={"message": ""}).status_code == 422
 
 
-def test_sample_endpoint_only_serves_allowlisted_collections(monkeypatch):
-    monkeypatch.setattr(type(settings), "configured", property(lambda self: True))
+def test_sample_endpoint_only_serves_allowlisted_collections(signed_in):
     assert client.get("/api/db/sample/checkpoints").status_code == 403
 
 

@@ -37,10 +37,12 @@ def redact(value: Any, extra_patterns: Sequence[re.Pattern] = ()) -> Any:
 class Tracer:
     """Writes one document per event to `agent_execution_events`."""
 
-    def __init__(self, collection, thread_id: str, agent: str, user_input: str, model: str = ""):
+    def __init__(self, collection, thread_id: str, agent: str, user_input: str, model: str = "",
+                 user_id: str | None = None):
         self.col = collection
         self.execution_id = uuid.uuid4().hex
         self.thread_id = thread_id
+        self.user_id = user_id  # None marks legacy/unowned events, which no API route returns
         self.agent = agent
         self.seq = 0
         self.t0 = time.perf_counter()
@@ -52,7 +54,7 @@ class Tracer:
         self.seq += 1
         doc = {
             "execution_id": self.execution_id, "thread_id": self.thread_id, "agent": self.agent,
-            "seq": self.seq, "type": type_, "node": node, "request_id": request_id_var.get(),
+            "seq": self.seq, "type": type_, "node": node, "request_id": request_id_var.get(), "user_id": self.user_id,
             "ts": datetime.now(timezone.utc), "data": redact(data),
         }
         try:

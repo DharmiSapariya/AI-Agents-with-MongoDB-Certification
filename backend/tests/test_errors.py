@@ -26,7 +26,7 @@ def client():
 
 
 @pytest.fixture
-def live(monkeypatch):
+def live(monkeypatch, signed_in):
     monkeypatch.setattr(settings, "mongodb_uri", URI)
     monkeypatch.setattr(settings, "openai_api_key", "sk-test-123456789")
     monkeypatch.setattr(settings, "voyage_api_key", "pa-test-123456789")
@@ -79,11 +79,11 @@ HANDLED = [c for c in CASES if c[2] != "internal_error"]  # unknown errors are c
 
 @pytest.mark.parametrize("exc,status,code", HANDLED)
 def test_chat_failures_return_consistent_safe_errors(client, live, monkeypatch, error_log, exc, status, code):
-    def failing_run(thread_id, message):
+    def failing_run(thread_id, message, user_id=None):
         raise exc
 
     monkeypatch.setattr(graph, "run", failing_run)
-    resp = client.post("/api/chat", json={"thread_id": "t1", "message": "hello"},
+    resp = client.post("/api/chat", json={"message": "hello"},
                        headers={"X-Request-ID": "client-req-0100"})
     assert resp.status_code == status
     err = resp.json()["error"]
@@ -98,22 +98,23 @@ def test_chat_failures_return_consistent_safe_errors(client, live, monkeypatch, 
 
 
 def test_unexpected_exception_is_generic_500_with_request_id(client, live, monkeypatch):
-    def failing_run(thread_id, message):
+    def failing_run(thread_id, message, user_id=None):
         raise ValueError(f"unexpected {URI}")
 
     monkeypatch.setattr(graph, "run", failing_run)
-    resp = client.post("/api/chat", json={"thread_id": "t1", "message": "hello"})
+    resp = client.post("/api/chat", json={"message": "hello"})
     assert resp.status_code == 500
     assert resp.json()["error"]["code"] == "internal_error" and resp.json()["error"]["request_id"]
     assert "hunter2" not in resp.text
 
 
-def test_validation_errors_do_not_echo_submitted_values(client):
+def test_validation_errors_do_not_echo_submitted_values(client, signed_in):
     resp = client.post("/api/chat", json={"thread_id": "../x mongodb://u:hunter2@h/db", "message": "hi"})
     assert resp.status_code == 422
     err = resp.json()["error"]
     assert err["code"] == "validation_error" and err["details"][0]["loc"] == ["body", "thread_id"]
-    assert "hunter2" not in resp.text and "input" not in json.dumps(err["details"])
+    assert "hunter2" not in resp.text
+    assert all(set(d) == {"loc", "msg"} for d in err["details"])  # no echoed "input" value
 
 
 def test_http_errors_use_the_same_shape(client):
@@ -125,7 +126,7 @@ def test_http_errors_use_the_same_shape(client):
 
 def test_demo_mode_error_has_its_own_code(client, monkeypatch):
     monkeypatch.setattr(settings, "app_mode", "demo")
-    resp = client.post("/api/chat", json={"thread_id": "t1", "message": "hello"})
+    resp = client.post("/api/chat", json={"message": "hello"})
     assert resp.status_code == 503 and resp.json()["error"]["code"] == "demo_mode"
 
 

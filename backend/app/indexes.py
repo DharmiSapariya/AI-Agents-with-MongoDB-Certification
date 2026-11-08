@@ -12,6 +12,9 @@ def ensure_indexes(database) -> list[str]:
         # get_page_content_for_summarization looks pages up by exact title; ingestion upserts by title
         database["full_docs"].create_index([("title", ASCENDING)], unique=True),
         database["chunked_docs"].create_index([("title", ASCENDING)]),
+        # owner-scoped reads: /api/executions and /api/sessions
+        database["agent_execution_events"].create_index([("user_id", ASCENDING), ("type", ASCENDING), ("ts", DESCENDING)]),
+        database["sessions"].create_index([("user_id", ASCENDING), ("updated_at", DESCENDING)]),
         database["quiz_attempts"].create_index([("user_id", ASCENDING)]),
         # registration relies on this to reject concurrent duplicates
         database["users"].create_index([("email", ASCENDING)], unique=True, name="email_unique"),

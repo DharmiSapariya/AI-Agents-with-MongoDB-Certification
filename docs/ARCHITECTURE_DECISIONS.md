@@ -11,7 +11,7 @@ If `$vectorSearch` fails (index missing or not ready, Atlas unreachable), the to
 ## 3. Redaction at write time (Accepted)
 `tracing.redact` runs before events are stored. Only observable actions are recorded, never model reasoning.
 
-## 4. Authentication and ownership (Accepted for accounts and tokens, session 4; ownership still Proposed)
+## 4. Authentication and ownership (Accepted, sessions 4 and 6)
 Email and password accounts in a `users` collection (password hashed with a standard KDF), short-lived signed access tokens. Every thread is stored in `agent_sessions` with `user_id`; the checkpoint `thread_id` is generated server-side, never taken from the client, and every route resolves it through that ownership record. Events, memories and mentor sessions carry `user_id` and are always queried with it. Chosen over a shared API key because the requirement is per-user isolation, which a shared key cannot give. Rate limiting is applied per user and per IP.
 
 ## 5. Three memory layers kept separate (Proposed)
@@ -49,3 +49,13 @@ Read routes receive a callable (`db_provider`) and call it after their config an
 - **Event loop:** routes are plain `def`, so FastAPI runs hashing and PyMongo calls in its threadpool. A semaphore (`AUTH_MAX_CONCURRENT_HASHES`) bounds concurrent 64 MiB hashes until item 7 adds request limits.
 - **Availability:** auth is enabled outside demo mode when `MONGODB_URI` and `JWT_SECRET` are set. `APP_MODE=live` requires `JWT_SECRET`. In `auto` mode a missing secret does not turn a working live config into demo; the auth routes return 503 and `/health` reports `auth: unavailable`. Item 6 will make protected routes depend on this.
 - **Not included:** refresh tokens, revocation (a token is valid until `exp` while the user exists), password reset, email verification, OAuth. Deleting a user invalidates their tokens because every request reloads the user.
+
+## 15. Session ownership (Accepted, session 6)
+- **Identity comes only from the verified token.** The chat body forbids extra fields, so a client-supplied `thread_id` or `user_id` is a 422 rather than silently ignored; headers such as `X-User-Id` have no effect (tested).
+- **Session ids** are `s_` plus 128 random bits, generated in `sessions.create`. The LangGraph `thread_id` is that id, so checkpoints are only ever keyed by an id the server issued, and only after `get_owned` succeeded.
+- **404 for both missing and foreign** sessions and executions, with identical bodies apart from the request id, so ids cannot be probed. A format error (`bad id`) is 400 and reveals nothing about existence.
+- **Every owner-scoped query includes `user_id`**, including list, detail, Mentor explain and the explorer. Tracer events carry `user_id`; `None` marks legacy events, which match no query.
+- **Explorer** is a fixed table (collection, owned or shared, returned fields) with bounded `limit` and `skip`. Shared knowledge collections hide `body` and `embedding`; the `users` and checkpoint collections are unreachable.
+- **Public health** drops exception type names and missing variable names (still logged), since the endpoint is unauthenticated.
+- **Quiz grading** needs a token when accounts are enabled and stays anonymous in demo mode, where no account store exists.
+- **Known gap:** an expected 4xx/5xx raised deliberately (for example `demo_mode`, `auth_unavailable`) is logged with a traceback at ERROR. Under abusive traffic that is noisy; roadmap item 7 will bound it.

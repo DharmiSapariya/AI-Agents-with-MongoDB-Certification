@@ -83,10 +83,11 @@ def build_app():
 _app = None
 
 
-def run(thread_id: str, user_input: str) -> dict:
+def run(thread_id: str, user_input: str, user_id: str | None = None) -> dict:
     global _app
     _app = _app or build_app()
-    tracer = Tracer(db()["agent_execution_events"], thread_id, "primary", user_input, settings.llm_model)
+    tracer = Tracer(db()["agent_execution_events"], thread_id, "primary", user_input, settings.llm_model,
+                    user_id=user_id)
     token = CURRENT.set(tracer)
     exec_token = execution_id_var.set(tracer.execution_id)
     started = time.perf_counter()

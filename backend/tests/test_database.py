@@ -8,7 +8,7 @@ from pymongo.errors import ServerSelectionTimeoutError
 
 from app import health, mongo
 from app.config import settings
-from app.main import app, db_provider
+from app.main import app
 
 URI = "mongodb://user:hunter2@localhost:1/?directConnection=true"
 
@@ -66,7 +66,7 @@ def test_live_with_unreachable_database_is_503_and_leaks_nothing(live):
     assert resp.status_code == 503
     body = resp.json()
     assert body["status"] == "degraded" and body["mongodb"] == "unreachable"
-    assert body["database"]["reason"] == "ServerSelectionTimeoutError"
+    assert body["database"] == {"state": "unreachable"}  # the exception type is logged, not published
     assert "hunter2" not in resp.text and "localhost" not in resp.text
 
 
@@ -84,7 +84,7 @@ def test_partial_credentials_still_report_the_real_database_state(monkeypatch):
     mongo.set_client(FakeClient(ServerSelectionTimeoutError("down")))
     body, status = health.report()
     assert status == 200 and body["mode"] == "demo" and body["mongodb"] == "unreachable"
-    assert "OPENAI_API_KEY" in body["missing_credentials"]
+    assert "missing_credentials" not in body and "OPENAI_API_KEY" not in str(body)
 
 
 def test_connect_configures_timeouts_and_reuses_one_client(monkeypatch):
@@ -142,15 +142,17 @@ def test_demo_mode_lifespan_creates_no_client(monkeypatch):
         assert mongo._client is None
 
 
-def test_read_routes_use_the_injected_database(live):
-    database = mongomock.MongoClient()["injected"]
-    database["agent_execution_events"].insert_one({"type": "execution_end", "execution_id": "e1", "ts": 1})
-    database["full_docs"].insert_one({"title": "T", "body": "b"})
-    app.dependency_overrides[db_provider] = lambda: (lambda: database)
-    try:
-        client = TestClient(app)
-        assert client.get("/api/executions").json() == [{"type": "execution_end", "execution_id": "e1", "ts": 1}]
-        assert {c["name"] for c in client.get("/api/db/collections").json()} == {"agent_execution_events", "full_docs"}
-        assert client.get("/api/db/sample/full_docs").json()[0]["title"] == "T"
-    finally:
-        app.dependency_overrides.clear()
+def test_read_routes_use_the_injected_database_and_only_return_the_callers_records(signed_in):
+    database = signed_in
+    database["agent_execution_events"].insert_many([
+        {"type": "execution_end", "execution_id": "e1", "ts": 1, "user_id": "u1"},
+        {"type": "execution_end", "execution_id": "e2", "ts": 2, "user_id": "u2"},
+        {"type": "execution_end", "execution_id": "legacy", "ts": 3}])
+    database["full_docs"].insert_one({"title": "T", "body": "b", "source": "t.md", "hash": "h", "chunk_count": 1})
+    client = TestClient(app)
+    assert client.get("/api/executions").json() == [{"type": "execution_end", "execution_id": "e1", "ts": 1, "user_id": "u1"}]
+    names = {c["name"]: c for c in client.get("/api/db/collections").json()}
+    assert names["full_docs"]["scope"] == "shared" and names["full_docs"]["count"] == 1
+    assert names["agent_execution_events"] == {"name": "agent_execution_events", "scope": "owned", "count": 1}
+    sample = client.get("/api/db/sample/full_docs").json()[0]
+    assert sample["title"] == "T" and "body" not in sample

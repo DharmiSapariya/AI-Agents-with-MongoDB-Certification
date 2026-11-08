@@ -2,7 +2,7 @@
 
 Statuses: COMPLETE AND VERIFIED, IMPLEMENTED BUT NOT VERIFIED, PARTIALLY IMPLEMENTED, NOT IMPLEMENTED.
 Mocked tests (mongomock, scripted model, in-memory checkpointer) never count as live verification.
-Last updated: session 4, after roadmap item 5. Base: 4efcb32 (origin/main). Tests: 151 pass (all mocked), ruff and mypy clean.
+Last updated: session 5/6 work, after roadmap item 6. Base: ef357f0 (origin/main). Tests: 174 pass (all mocked), ruff and mypy clean.
 Legend: VERIFIED LOCALLY (mocked/demo/mongomock), VERIFIED LIVE (real providers), IMPLEMENTED, VERIFICATION PENDING, PARTIAL, PLANNED. Older rows below use the earlier four-status wording; IMPLEMENTED BUT NOT VERIFIED means IMPLEMENTED, VERIFICATION PENDING.
 
 ## Phase A: backend
@@ -16,7 +16,7 @@ Legend: VERIFIED LOCALLY (mocked/demo/mongomock), VERIFIED LIVE (real providers)
 | Request IDs | IMPLEMENTED BUT NOT VERIFIED | `middleware.py`: validated/generated, on responses, logs and execution events; concurrency tested with 30 parallel requests (mocked app) |
 | Input validation | PARTIALLY IMPLEMENTED | thread_id/message/limit validated (tests/test_api.py); no body size cap at the server |
 | Authentication (register, login, current user) | VERIFIED LOCALLY (mongomock, 52 tests in test_auth.py/test_config.py) | `auth.py`, `routes_auth.py`. Argon2id, HS256 tokens with required claims, uniform login errors, unique email index, concurrent-registration test. Never run against Atlas; unique-index race enforced by mongomock in tests |
-| User/session ownership | PLANNED (item 6) | any caller can still use any thread_id and read all traces |
+| User/session ownership | VERIFIED LOCALLY (mongomock, 22 tests in test_ownership.py; mutation-checked: removing the owner filters fails 6 of them) | `sessions.py`, `routes_api.py`. Server-generated session ids, owner on every query, 404 for foreign and missing, legacy unowned records hidden. Not run against Atlas; exhaustive cross-user matrix is item 8 |
 | Rate limiting | NOT IMPLEMENTED | |
 | LLM timeout / bounded retries | IMPLEMENTED BUT NOT VERIFIED | configurable for ChatOpenAI and the Voyage query call; never called live |
 | Exception handling | IMPLEMENTED BUT NOT VERIFIED | `errors.py`: uniform error body, Mongo/LLM/embedding/timeout/step-limit classification, no values or traces to clients (tests/test_errors.py). Provider exceptions are constructed in tests, not produced by real providers |
@@ -76,14 +76,22 @@ No dataset, scripts or results. NOT IMPLEMENTED. No benchmark number exists.
 | Screenshots | NOT IMPLEMENTED | none until the app runs |
 | Credly link, badge vs project achievements | COMPLETE AND VERIFIED | README; certificate image checked against the claims |
 
-## Route policy after item 5
-Item 5 adds the reusable `get_current_user` dependency and protects exactly one route. Item 6 applies the policy to the rest.
+## Route policy (after item 6)
+Scope: **public**, **auth** (any signed-in user; 503 `demo_mode` first when not live), **owner** (auth and every query filtered by the token's user id; foreign and missing both 404).
 
-| Route | Today | Item 6 target |
+| Route | Scope | Notes |
 |---|---|---|
-| `GET /health`, `GET /` | public | public (health to be trimmed) |
-| `POST /api/auth/register`, `/login` | public (503 if auth unavailable) | public, rate limited (item 7) |
-| `GET /api/auth/me` | **requires a valid token** | authenticated |
-| `POST /api/chat`, `GET /api/executions`, `/api/executions/{id}`, `/api/mentor/explain/{id}` | public (503 in demo) | authenticated, owner-scoped |
-| `GET /api/db/collections`, `/api/db/sample/{name}` | public (503 in demo) | restricted/purpose-built |
-| `GET /api/mentor/teach/{c}`, `/api/mentor/quiz`, `POST /api/mentor/quiz` | public | teach/quiz questions public, grading and progress authenticated |
+| `GET /health`, `GET /` | public | health body is `status`, `mode`, `mongodb`, `database.state`, `auth` only; exception types and missing variable names stay in the server log |
+| `POST /api/auth/register`, `POST /api/auth/login` | public | 503 `auth_unavailable` without an account store; abuse limits are item 7 |
+| `GET /api/auth/me` | auth | |
+| `GET /api/mentor/teach/{concept}`, `GET /api/mentor/quiz` | public | static content, no database access |
+| `POST /api/mentor/quiz` | auth when accounts are enabled, anonymous in demo | attempt stored with the token's user id; body may not carry a user id |
+| `POST /api/chat` | owner | body `{session_id?, message}`; omitting `session_id` creates a session; `thread_id`/`user_id` in the body are rejected (422) |
+| `GET /api/sessions`, `GET /api/sessions/{id}` | owner | newest first; `limit` 1-50, `skip` 0-1000 |
+| `GET /api/executions`, `GET /api/executions/{id}` | owner | events carry `user_id`; `limit` 1-100, `skip` 0-1000 |
+| `GET /api/mentor/explain/{id}` | owner | same lookup as executions |
+| `GET /api/db/collections`, `GET /api/db/sample/{name}` | auth | fixed allowlist: `full_docs`, `chunked_docs` (shared, fixed fields, no body/embedding) and `sessions`, `agent_execution_events`, `quiz_attempts` (owner-filtered); `users`, checkpoints and everything else return 403; `limit` 1-20, `skip` 0-1000 |
+
+Not yet present, and must use `sessions.get_owned` when added: conversation history/messages endpoint (roadmap 14), streaming endpoint (13), long-term memory (14). Checkpoints are never exposed directly; the graph only receives thread ids that come from an owned session.
+
+**Legacy data:** events and quiz attempts written before item 6 have no `user_id`. Every query filters on `user_id`, so they match no user and are never returned or assigned to anyone. They remain in MongoDB. No migration is provided; if one is wanted later it must be an explicit operator script with a named target user.

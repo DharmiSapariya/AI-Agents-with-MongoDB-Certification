@@ -1,20 +1,18 @@
 import logging
-import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, Field
 
 from . import health, mentor, mongo
 from .config import settings
-from .deps import db_provider
-from .errors import DemoMode, install_handlers
+from .errors import install_handlers
 from .logging_config import configure_logging, log
 from .middleware import RequestIdMiddleware
+from .routes_api import router as api_router
 from .routes_auth import router as auth_router
 
 configure_logging(settings.log_level, settings.log_redact_patterns)
@@ -40,69 +38,16 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="MongoDB AI Agent Platform", version="0.1.0", lifespan=lifespan)
 install_handlers(app)
 app.include_router(auth_router)
+app.include_router(api_router)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://localhost:8000"],
                    allow_methods=["GET", "POST"], allow_headers=["*"], expose_headers=["X-Request-ID"])
 app.add_middleware(RequestIdMiddleware)
-ID_RE = r"^[A-Za-z0-9_\-]{1,64}$"
-READABLE = {"chunked_docs", "full_docs", "agent_execution_events", "quiz_attempts"}
-
-
-class ChatIn(BaseModel):
-    thread_id: str = Field(pattern=ID_RE)
-    message: str = Field(min_length=1, max_length=2000)
-
-
-class QuizIn(BaseModel):
-    user_id: str = Field(pattern=ID_RE)
-    answers: dict[str, int]
-
-
-def _require_config():
-    if not settings.configured:
-        raise DemoMode("Demo mode: set MONGODB_URI, OPENAI_API_KEY and VOYAGE_API_KEY in .env")
 
 
 @app.get("/health")
 def health_check():
     body, status = health.report()
     return JSONResponse(body, status_code=status)
-
-
-@app.post("/api/chat")
-def chat(body: ChatIn):
-    _require_config()
-    from .graph import run
-    return run(body.thread_id, body.message)
-
-
-@app.get("/api/executions")
-def executions(limit: int = Query(20, ge=1, le=100), get_db=Depends(db_provider)):
-    _require_config()
-    rows = get_db()["agent_execution_events"].find({"type": "execution_end"}, {"_id": 0}).sort("ts", -1).limit(limit)
-    return list(rows)
-
-
-def _events(database, execution_id: str):
-    return list(database["agent_execution_events"].find({"execution_id": execution_id}, {"_id": 0}).sort("seq", 1))
-
-
-@app.get("/api/executions/{execution_id}")
-def execution(execution_id: str, get_db=Depends(db_provider)):
-    _require_config()
-    if not re.match(ID_RE, execution_id):
-        raise HTTPException(400, "bad id")
-    return _events(get_db(), execution_id)
-
-
-@app.get("/api/mentor/explain/{execution_id}")
-def mentor_explain(execution_id: str, get_db=Depends(db_provider)):
-    _require_config()
-    if not re.match(ID_RE, execution_id):
-        raise HTTPException(400, "bad id")
-    events = _events(get_db(), execution_id)
-    if not events:
-        raise HTTPException(404, "execution not found")
-    return mentor.explain_execution(events)
 
 
 @app.get("/api/mentor/teach/{concept}")
@@ -116,30 +61,6 @@ def mentor_teach(concept: str):
 @app.get("/api/mentor/quiz")
 def mentor_quiz():
     return [{k: v for k, v in q.items() if k not in ("answer", "why")} for q in mentor.QUIZ]
-
-
-@app.post("/api/mentor/quiz")
-def mentor_grade(body: QuizIn):
-    res = mentor.grade(body.answers)
-    if settings.configured:
-        mongo.db()["quiz_attempts"].insert_one({"user_id": body.user_id, **res})
-    return res
-
-
-@app.get("/api/db/collections")
-def collections(get_db=Depends(db_provider)):
-    _require_config()
-    database = get_db()
-    return [{"name": n, "count": database[n].estimated_document_count()} for n in sorted(database.list_collection_names())]
-
-
-@app.get("/api/db/sample/{name}")
-def sample(name: str, get_db=Depends(db_provider)):
-    _require_config()
-    if name not in READABLE:
-        raise HTTPException(403, "collection not readable")
-    docs = list(get_db()[name].find({}, {"embedding": 0}).limit(3))
-    return [{**d, "_id": str(d["_id"])} for d in docs]
 
 
 FRONT = Path(__file__).resolve().parents[2] / "frontend" / "index.html"
