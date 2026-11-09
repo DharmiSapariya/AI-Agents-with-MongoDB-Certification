@@ -8,10 +8,10 @@ import re
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from . import auth, mentor, sessions
+from . import auth, memory, mentor, sessions
 from .chat_stream import stream_turn
 from .config import settings
 from .deps import db_provider
@@ -68,6 +68,7 @@ class ChatIn(BaseModel):
     model_config = ConfigDict(extra="forbid")  # a client-supplied thread_id or user_id is an error, not ignored
     session_id: str | None = Field(None, pattern=ID_RE)
     message: str = Field(min_length=1, max_length=2000)
+    use_memory: bool = False
 
 
 class QuizIn(BaseModel):
@@ -86,12 +87,19 @@ def _chat_session(database, user_id: str, session_id: str | None) -> str:
     return sessions.create(database, user_id)["_id"]
 
 
+def _memory_notes(database, user_id: str, enabled: bool) -> memory.MemoryOptions:
+    if enabled:
+        return {"memory_notes": tuple(note.text for note in memory.list_owned(database, user_id, limit=5))}
+    return {}
+
+
 @router.post("/chat")
 def chat(body: ChatIn, user: LiveUser, _budget: Annotated[None, Depends(chat_budget)], get_db=Depends(db_provider)):
     database = get_db()
     session_id = _chat_session(database, user["_id"], body.session_id)
     from .graph import run
-    result = run(session_id, body.message, user_id=user["_id"])
+    notes = _memory_notes(database, user["_id"], body.use_memory)
+    result = run(session_id, body.message, user_id=user["_id"], **notes)
     sessions.record_turn(database, session_id)
     return {**result, "session_id": session_id}
 
@@ -101,7 +109,8 @@ def chat(body: ChatIn, user: LiveUser, _budget: Annotated[None, Depends(chat_bud
 def chat_stream(body: ChatIn, user: LiveUser, _budget: Annotated[None, Depends(chat_budget)], get_db=Depends(db_provider)):
     database = get_db()
     session_id = _chat_session(database, user["_id"], body.session_id)
-    return StreamingResponse(stream_turn(database, session_id, body.message, user["_id"]),
+    return StreamingResponse(stream_turn(database, session_id, body.message, user["_id"],
+                                         **_memory_notes(database, user["_id"], body.use_memory)),
                              media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
 
@@ -115,6 +124,31 @@ def list_sessions(user: LiveUser, limit: int = Query(20, ge=1, le=50), skip: int
 def get_session(session_id: str, user: LiveUser, get_db=Depends(db_provider)):
     _check_id(session_id)
     return sessions.to_public(sessions.get_owned(get_db(), user["_id"], session_id))
+
+
+@router.get("/sessions/{session_id}/history")
+def session_history(session_id: str, user: LiveUser, limit: int = Query(20, ge=1, le=50),
+                    skip: int = Query(0, ge=0, le=1000), get_db=Depends(db_provider)):
+    _check_id(session_id)
+    return sessions.history(get_db(), user["_id"], session_id, limit, skip)
+
+
+@router.get("/memory", response_model=list[memory.PublicMemory])
+def list_memory(user: auth.CurrentUser, limit: int = Query(20, ge=1, le=50),
+                skip: int = Query(0, ge=0, le=1000), get_db=Depends(db_provider)):
+    return memory.list_owned(get_db(), user["_id"], limit, skip)
+
+
+@router.post("/memory", status_code=201, response_model=memory.PublicMemory)
+def save_memory(body: memory.MemoryIn, user: auth.CurrentUser, get_db=Depends(db_provider)):
+    return memory.save(get_db(), user["_id"], body.text)
+
+
+@router.delete("/memory/{memory_id}", status_code=204)
+def delete_memory(memory_id: str, user: auth.CurrentUser, get_db=Depends(db_provider)):
+    _check_id(memory_id)
+    memory.delete(get_db(), user["_id"], memory_id)
+    return Response(status_code=204)
 
 
 @router.get("/executions")

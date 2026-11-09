@@ -223,3 +223,21 @@ authorized client can fetch persisted events at `GET /api/executions/{id}`
 when recording succeeded. Disconnecting stops delivery. A synchronous
 graph run already in progress can still finish and save the turn.
 Treat a retry as a new turn. This endpoint has no replay or idempotency key.
+
+### Conversation history and saved notes
+
+- `GET /api/sessions/{session_id}/history?limit=20&skip=0` lists finalized
+  turns newest first for the session owner. It uses redacted execution records
+  and may be incomplete if trace persistence failed. Legacy turns can lack
+  citations, outcomes, or the original question. Raw checkpoint and tool
+  contents stay outside this endpoint.
+- `POST /api/memory` saves an explicit note from a JSON body with a `text`
+  field. `GET /api/memory` lists the caller's notes, newest first, and
+  `DELETE /api/memory/{memory_id}` deletes an owned note.
+- Send `"use_memory": true` with either chat request to include up to five
+  of your newest notes as personalization context. Notes are off by default.
+  A deleted note is excluded from later lookups. Deletion does not rewrite
+  past chat answers or stop a turn that already loaded the note.
+
+Rerun `python scripts/create_indexes.py` on existing installations to
+add the history and memory indexes.

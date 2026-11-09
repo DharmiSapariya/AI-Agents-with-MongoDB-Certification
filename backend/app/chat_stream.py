@@ -4,16 +4,20 @@ import json
 from collections.abc import AsyncIterator
 from contextlib import suppress
 
+from typing_extensions import Unpack
+
 from . import sessions
 from .context import request_id_var
 from .errors import classify, error_body
+from .memory import MemoryOptions
 
 
 def _frame(kind: str, payload: dict) -> str:
     return f"event: {kind}\ndata: {json.dumps(payload)}\n\n"
 
 
-async def stream_turn(database, session_id: str, message: str, user_id: str) -> AsyncIterator[str]:
+async def stream_turn(database, session_id: str, message: str, user_id: str,
+                      **options: Unpack[MemoryOptions]) -> AsyncIterator[str]:
     from .graph import run
 
     loop = asyncio.get_running_loop()
@@ -32,7 +36,7 @@ async def stream_turn(database, session_id: str, message: str, user_id: str) -> 
             loop.call_soon_threadsafe(enqueue)
 
     def execute() -> dict:
-        result = run(session_id, message, user_id=user_id, on_event=publish)
+        result = run(session_id, message, user_id=user_id, on_event=publish, **options)
         sessions.record_turn(database, session_id)
         return result
 

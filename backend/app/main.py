@@ -48,7 +48,7 @@ app.state.limits = Limits.from_settings(settings)
 # Protection still get the request id and CORS headers.
 app.add_middleware(ProtectionMiddleware)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://localhost:8000"],
-                   allow_methods=["GET", "POST"], allow_headers=["*"],
+                   allow_methods=["GET", "POST", "DELETE"], allow_headers=["*"],
                    expose_headers=["X-Request-ID", "Retry-After"])
 app.add_middleware(RequestIdMiddleware)
 

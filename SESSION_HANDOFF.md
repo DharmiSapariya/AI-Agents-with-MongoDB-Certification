@@ -97,3 +97,14 @@ survival against persistent MongoDB.
 Local checks: 277 tests passed, Ruff and Mypy clean (26 app files), and
 diff checks clean. The scripted graph and ASGI tests do not establish
 real-provider grounding or deployment behavior.
+
+## Session 10 — item 14
+
+Session 9 was published at `394e468`. Session 10 adds owner-scoped,
+paginated conversation history from finalized traces and user-managed
+memory notes. Chat uses up to five notes only with explicit per-turn opt-in.
+Deleting a note excludes it from subsequent lookups. Raw graph checkpoints
+remain private. Next: the optional persistent MongoDB restart test.
+
+Item 14 local checks: 283 tests passed, Ruff and Mypy clean (27 app
+files), and diff checks clean. API tests used mongomock and a fake graph.

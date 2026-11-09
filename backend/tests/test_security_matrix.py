@@ -31,6 +31,9 @@ ROUTES = (
      {"message": "hello", "session_id": "s_alice"}, "owner", 200),
     ("GET", "/api/sessions", "/api/sessions", None, "owner-list", 200),
     ("GET", "/api/sessions/{session_id}", "/api/sessions/s_alice", None, "owner", 200),
+    ("GET", "/api/sessions/{session_id}/history", "/api/sessions/s_alice/history", None, "owner", 200),
+    ("GET", "/api/memory", "/api/memory", None, "auth", 200),
+    ("POST", "/api/memory", "/api/memory", {"text": "Use short examples."}, "auth", 201),
     ("GET", "/api/executions", "/api/executions", None, "owner-list", 200),
     ("GET", "/api/executions/{execution_id}", "/api/executions/run-alice", None, "owner", 200),
     ("GET", "/api/mentor/explain/{execution_id}", "/api/mentor/explain/run-alice", None, "owner", 200),
@@ -45,6 +48,7 @@ def test_each_registered_http_method_has_an_explicit_policy():
     framework_paths = {"/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json"}
     expected = {(method, path) for method, path, *_ in ROUTES}
     expected |= {("HEAD", path) for path in framework_paths}
+    expected.add(("DELETE", "/api/memory/{memory_id}"))  # exercised in test_memory.py
     assert registered == expected
 
 

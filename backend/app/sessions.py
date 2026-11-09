@@ -42,3 +42,22 @@ def record_turn(database, session_id: str) -> None:
 def list_owned(database, user_id: str, limit: int, skip: int) -> list[dict[str, Any]]:
     cursor = database["sessions"].find({"user_id": user_id}).sort("updated_at", -1).skip(skip).limit(limit)
     return list(cursor)
+
+
+def history(database, user_id: str, session_id: str, limit: int, skip: int) -> list[dict]:
+    """Public history comes from finalized traces, avoiding raw model and tool checkpoint state."""
+    get_owned(database, user_id, session_id)
+    events = database["agent_execution_events"]
+    scope = {"user_id": user_id, "thread_id": session_id}
+    ends = list(events.find({**scope, "type": "execution_end"})
+                .sort([("ts", -1), ("_id", -1)]).skip(skip).limit(limit))
+    ids = [event["execution_id"] for event in ends]
+    starts = events.find({**scope, "type": "execution_start", "execution_id": {"$in": ids}})
+    questions = {event["execution_id"]: event["data"].get("user_input") for event in starts}
+    return [{
+        "execution_id": event["execution_id"], "finished_at": event["ts"],
+        "question": questions.get(event["execution_id"]),
+        "answer": event["data"].get("final_answer") if event["data"].get("status") == "success" else None,
+        "status": event["data"].get("status"), "outcome": event["data"].get("outcome"),
+        "citations": event["data"].get("citations", []),
+    } for event in ends]

@@ -92,7 +92,7 @@ Scope: **public**, **auth** (any signed-in user; 503 `demo_mode` first when not 
 | `GET /api/mentor/explain/{id}` | owner | same lookup as executions |
 | `GET /api/db/collections`, `GET /api/db/sample/{name}` | auth | fixed allowlist: `full_docs`, `chunked_docs` (shared, fixed fields, no body/embedding) and `sessions`, `agent_execution_events`, `quiz_attempts` (owner-filtered); `users`, checkpoints and everything else return 403; `limit` 1-20, `skip` 0-1000 |
 
-Not yet present, and must use `sessions.get_owned` when added: conversation history/messages endpoint (roadmap 14), long-term memory (14). Checkpoints are never exposed directly; the graph only receives thread ids that come from an owned session.
+Conversation history uses the same ownership check as chat. Checkpoints are never exposed directly; the graph only receives thread ids that come from an owned session.
 
 **Legacy data:** events and quiz attempts written before item 6 have no `user_id`. Every query filters on `user_id`, so they match no user and are never returned or assigned to anyone. They remain in MongoDB. No migration is provided; if one is wanted later it must be an explicit operator script with a named target user.
 
@@ -147,3 +147,14 @@ These tests do not exercise Atlas, a reverse proxy, or multiple workers.
 | Current-turn citation provenance and explicit evidence outcomes | Real LangGraph wiring with a scripted model, mongomock, and an in-memory checkpointer |
 | Authenticated POST chat SSE | ASGI tests with signed tokens, scoped sessions, shared chat budgets, safe progress fields, and terminal results/errors |
 | Atlas, Voyage, OpenAI, and deployed streaming | Pending live verification |
+
+## Conversation history and long-term memory (item 14)
+
+| Route | Policy |
+|---|---|
+| `GET /api/sessions/{session_id}/history` | Owner only. Returns bounded finalized turns from persisted traces |
+| `GET /api/memory`, `POST /api/memory` | Authenticated. Lists or saves notes for the token user |
+| `DELETE /api/memory/{memory_id}` | Owner only. Foreign and missing notes both return 404 |
+
+Both chat entry points support explicit per-turn memory opt-in. Local tests
+exercise signed tokens, isolation, deletion and graph prompt construction.
