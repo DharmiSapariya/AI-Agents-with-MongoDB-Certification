@@ -31,7 +31,7 @@ A source-grounded agent workspace and an independent Mentor, built around the Mo
 | **Primary agent** | LangGraph routes between the model, Atlas Vector Search, and exact document lookup. The API validates citation IDs against evidence retrieved for that turn. |
 | **Mentor** | A separate deterministic LangGraph explains recorded events, walks through traces, and tracks lessons, quizzes, and challenges. |
 | **State** | MongoDB stores user-owned sessions, checkpoints, notes, execution events, and learning progress. |
-| **Verified** | The release passed 292 backend tests and 7 frontend tests. Chromium walkthroughs and hosted Docker demo checks passed. |
+| **Verified** | The release passed 293 backend tests and 8 frontend tests. Chromium walkthroughs and hosted Docker demo checks passed. |
 | **Still to verify live** | Atlas retrieval, Voyage and OpenAI calls, real MongoDB checkpoint restoration, and benchmark scores. |
 
 ## The problem
@@ -41,6 +41,11 @@ A chat interface can show an answer while leaving the retrieval process invisibl
 The platform gives the answer, its citation metadata, and the saved execution separate surfaces. The Mentor reads the recorded execution through an owner-scoped view and explains the events without running the primary tools again.
 
 ## Workspace preview
+
+[![Workspace dashboard with a recorded run and grouped navigation](assets/screenshots/workspace/dashboard-fixture.png)](docs/PLATFORM_REDESIGN.md#workspace-evidence)
+
+The dashboard screenshot uses the labeled scripted fixture. See the [workspace verification and live setup](docs/PLATFORM_REDESIGN.md).
+
 
 [![Agent Playground showing a cited answer and execution events from a scripted local run](assets/screenshots/playground-scripted.png)](docs/RELEASE_EVIDENCE.md#browser-captures)
 
@@ -110,8 +115,8 @@ See the [architecture decisions](docs/ARCHITECTURE_DECISIONS.md), [route policy]
 
 | Check | Observed result | Scope |
 |---|---|---|
-| Backend suite | **292 passed, 1 skipped**, with Ruff and Mypy passing | Local tests use fixtures such as mongomock, a scripted model, and an in-memory checkpointer. |
-| Frontend suite | **7 passed**, with a successful TypeScript and Vite production build | Clean npm install and local build. |
+| Backend suite | **293 passed, 2 skipped**, with Ruff and Mypy passing | Local tests use fixtures such as mongomock, a scripted model, and an in-memory checkpointer. |
+| Frontend suite | **8 passed**, with a successful TypeScript and Vite production build | Clean npm install and local build. |
 | Chromium walkthrough | Credential-free Resources and signed-in Playground-to-Mentor flows passed | The signed-in primary answer and retrieval events came from a labeled scripted fixture. |
 | Hosted CI | Backend, frontend, and container smoke jobs passed | Docker demo startup and the React-to-FastAPI gateway were exercised. |
 | Live retrieval benchmark | Runner and report viewer implemented | No live Atlas benchmark scores are bundled. |
