@@ -108,3 +108,20 @@ remain private. Next: the optional persistent MongoDB restart test.
 
 Item 14 local checks: 283 tests passed, Ruff and Mypy clean (27 app
 files), and diff checks clean. API tests used mongomock and a fake graph.
+
+## Session 10 — item 15
+
+The opt-in test `test_checkpoint_survives_fresh_graph_and_mongo_client`
+uses MongoDBSaver and two successive clients/graph instances. Set
+`TEST_MONGODB_URI` for an isolated deployment that allows creating and
+dropping its generated database. The scripted model checks that the prior
+user message reaches the rebuilt graph. This tests checkpoint restore
+across graph/client recreation rather than a full uvicorn process restart.
+
+Next: item 16, the independent Mentor workflow. Start by inspecting
+`backend/app/mentor.py`, `routes_api.py`, and the existing scoped execution
+lookup. Preserve the static lessons and quiz paths while adding the Mentor
+graph and its separate owned state.
+
+Final local checks: 283 passed, 1 skipped, Ruff and Mypy clean. The skipped
+test needs `TEST_MONGODB_URI`. No real MongoDB restart was verified here.

@@ -241,3 +241,15 @@ Treat a retry as a new turn. This endpoint has no replay or idempotency key.
 
 Rerun `python scripts/create_indexes.py` on existing installations to
 add the history and memory indexes.
+
+To test checkpoint persistence with real MongoDB, export
+`TEST_MONGODB_URI` for a dedicated test deployment and run:
+
+```bash
+cd backend
+pytest -q -k checkpoint_survives_fresh_graph_and_mongo_client
+```
+
+The test requires permission to create and drop one randomly named database.
+It closes the first client and creates a new client and graph for the next
+turn. The LLM is scripted, and Atlas Vector Search is outside this test.

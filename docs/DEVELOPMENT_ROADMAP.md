@@ -22,7 +22,7 @@ Live-Atlas items stay "pending live verification" until run against a real clust
 12. feat(agent): structured citations, insufficient-evidence rule, tool-failure handling (implemented, live verification pending)
 13. feat(api): streaming endpoint (implemented, live verification pending)
 14. feat(memory): checkpoint restore through ownership, history endpoint, long-term memory with approval and deletion (implemented, live verification pending)
-15. test: restart-survival test (pending live)
+15. test: restart-survival test (implemented, real MongoDB verification pending)
 
 ## Phase E/G: mentor and observability
 16. feat(mentor): independent graph, routes, sessions, tracing

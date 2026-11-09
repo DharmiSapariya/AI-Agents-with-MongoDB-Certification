@@ -164,3 +164,44 @@ def test_memory_is_escaped_per_turn_and_kept_out_of_checkpoint_input(agent):
     graph.run("memory", "second")
     assert "&lt;/personal_notes&gt;" in observed[0]
     assert "My style" not in observed[1]
+
+
+def test_checkpoint_survives_fresh_graph_and_mongo_client(agent, monkeypatch):
+    """Opt-in integration test. Model calls are scripted; checkpoints are real."""
+    import os
+    from uuid import uuid4
+
+    from langchain_core.messages import HumanMessage
+    from langgraph.checkpoint.mongodb import MongoDBSaver
+    from pymongo import MongoClient
+
+    uri = os.getenv("TEST_MONGODB_URI")
+    if not uri:
+        pytest.skip("Set TEST_MONGODB_URI to an isolated test deployment.")
+
+    model, _ = agent
+    checkpoint_db = f"agent_restart_test_{uuid4().hex}"
+    monkeypatch.setattr(graph.settings, "checkpoint_db", checkpoint_db)
+    monkeypatch.setattr(graph, "MongoDBSaver", MongoDBSaver)
+    thread = f"s_{uuid4().hex}"
+    first_question = "Remember this checkpoint question"
+
+    def resumed(messages):
+        assert first_question in [message.content for message in messages if isinstance(message, HumanMessage)]
+        return AIMessage(content="No evidence")
+
+    with MongoClient(uri, serverSelectionTimeoutMS=5000) as cleanup:
+        cleanup.admin.command("ping")
+        try:
+            with MongoClient(uri, serverSelectionTimeoutMS=5000) as first_client:
+                monkeypatch.setattr(graph, "client", lambda: first_client)
+                model.replies = [AIMessage(content="No evidence")]
+                graph.run(thread, first_question, user_id="test-owner")
+            monkeypatch.setattr(graph, "_app", None)
+            with MongoClient(uri, serverSelectionTimeoutMS=5000) as next_client:
+                monkeypatch.setattr(graph, "client", lambda: next_client)
+                model.replies = [resumed]
+                result = graph.run(thread, "Continue the conversation", user_id="test-owner")
+                assert result["outcome"] == "insufficient_evidence"
+        finally:
+            cleanup.drop_database(checkpoint_db)
