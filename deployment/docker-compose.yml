@@ -1,5 +1,26 @@
 services:
   app:
-    build: {context: .., dockerfile: deployment/Dockerfile.backend}
-    env_file: ../.env
-    ports: ["8000:8000"]
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.backend
+    env_file:
+      - path: ../.env
+        required: false
+    ports:
+      - "127.0.0.1:8000:8000"
+    init: true
+    stop_grace_period: 35s
+    security_opt:
+      - no-new-privileges:true
+  web:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.frontend
+    depends_on:
+      app:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8080:8080"
+    init: true
+    security_opt:
+      - no-new-privileges:true

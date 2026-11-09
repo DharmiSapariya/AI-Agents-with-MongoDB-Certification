@@ -197,3 +197,11 @@ architecture, curriculum and Credly credential and accepts local JSON
 from the retrieval evaluator. Report import validates the expected shape
 and shows the declared run mode. No live results are bundled or verified
 by the viewer.
+
+## Benchmark runs, containers and CI (items 26–27)
+
+| Feature | Verification |
+|---|---|
+| Vector and agent reports | Evaluator tests cover scoring, failed cases, exclusive file creation, and safe failure codes. Frontend tests cover report import. Live scores are pending. |
+| Container configuration | Backend and React gateway have separate non-root images and health checks. CI is configured to build and start the demo and smoke-test the gateway. |
+| GitHub Actions | Backend tests, frontend tests and build, and container smoke jobs are configured. A hosted run has not yet been observed for these changes. |

@@ -33,7 +33,7 @@ Live-Atlas items stay "pending live verification" until run against a real clust
 19. foundation and auth (session 12); 20. playground with streaming (session 12); 21. live execution (session 13); 22. memory and explorer (session 13); 23. observability (session 13); 24. mentor and learning center (session 14); 25. benchmarks, documentation, certification (session 14)
 
 ## Phase H/I
-26. feat(evaluation): benchmark runner and stored runs (session 15, live run pending); 27. Docker hardening and healthchecks; 28. docs finalisation with real screenshots
+26. feat(evaluation): benchmark runner and stored runs (session 15, live run pending); 27. Docker hardening and healthchecks (session 15, container run pending); 28. docs finalisation with real screenshots
 
 ## What is blocked on the user
 Atlas connection string with a vector index, OpenAI key, Voyage key, and a GitHub remote. Independent work continues without them.

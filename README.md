@@ -353,3 +353,31 @@ surfaces. Failed answerable cases score zero and are counted separately.
 The runner saves its report and exits nonzero if any case fails. The
 React report viewer accepts either strategy's JSON. No live results are
 bundled.
+
+### Run the workspace with Docker Compose
+
+From the repository root, use Docker Compose 2.24 or newer:
+
+```bash
+docker compose -f deployment/docker-compose.yml up --build --wait
+curl --fail http://127.0.0.1:8080/health
+docker compose -f deployment/docker-compose.yml down
+```
+
+Open http://127.0.0.1:8080 for React. The original FastAPI page remains
+available at http://127.0.0.1:8000. Both ports bind to loopback. Without an
+environment file the stack starts in demo mode. For live runs, put the
+Atlas URI, Voyage key, OpenAI key, and JWT secret in the root `.env`
+before starting Compose. The frontend build does not receive those values.
+
+The frontend gateway routes `/api/*` and `/health` to FastAPI and disables
+response buffering for streaming. FastAPI readiness reflects its database
+health. The frontend health check tests static asset serving. The gateway
+allows at most 1 MiB per body and closes an idle upstream response after
+180 seconds. FastAPI may enforce a smaller body limit.
+
+The gateway replaces forwarded IP headers. By default, Docker traffic
+can share a backend IP rate bucket because Uvicorn trusts only configured
+peers. Before exposing the stack through a reverse proxy, configure
+`FORWARDED_ALLOW_IPS` for the trusted gateway address or isolated proxy
+subnet. The provided Compose file is a local deployment.

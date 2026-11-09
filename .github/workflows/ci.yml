@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
   pull_request:
+permissions:
+  contents: read
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -16,3 +18,35 @@ jobs:
       - run: cd backend && ruff check . ../scripts
       - run: cd backend && mypy app
       - run: cd backend && pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/playground
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/playground/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+  containers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f deployment/docker-compose.yml config --quiet
+      - run: docker compose -f deployment/docker-compose.yml up --build --wait --wait-timeout 120
+      - name: Check the React gateway and FastAPI demo
+        run: |
+          curl --fail --silent --show-error http://127.0.0.1:8080/ | grep 'Agent Playground'
+          curl --fail --silent --show-error http://127.0.0.1:8080/health | python -c 'import json, sys; assert json.load(sys.stdin)["mode"] == "demo"'
+          curl --fail --silent --show-error http://127.0.0.1:8080/api/mentor/quiz | python -c 'import json, sys; assert json.load(sys.stdin)'
+      - if: failure()
+        run: docker compose -f deployment/docker-compose.yml logs --no-color
+      - if: always()
+        run: docker compose -f deployment/docker-compose.yml down

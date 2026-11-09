@@ -230,3 +230,23 @@ dataset hash, Git revision, timestamp and settings. Failure codes are
 recorded without raw provider details. The report viewer imports both
 strategies and distinguishes failure from no evidence. Live evaluation
 still needs an isolated Atlas corpus, Voyage, and OpenAI for agent mode.
+
+## Session 15 — item 27
+
+Compose builds a non-root FastAPI service and a separate React/Nginx
+gateway. The gateway preserves streaming and both service ports bind to
+loopback. The root environment file is optional for demo and excluded
+from the Docker build context. GitHub Actions now has frontend and
+container smoke jobs alongside backend checks.
+
+Next: Session 16, item 28. Reproduce the demo from a clean checkout,
+inspect actual GitHub Actions results, capture working-screen evidence,
+and finalize the README. Keep any live Atlas, benchmark, or deployment
+claim pending until it has actually been verified.
+
+Final checks: 292 backend tests passed and one real-MongoDB test skipped;
+Ruff and Mypy passed. Seven frontend tests and the production build
+passed. Docker Compose config validation and actionlint passed. No Docker
+daemon was available here, so container build and startup remain pending.
+The evaluator's no-credentials guard was exercised; no live benchmark
+scores were generated.
