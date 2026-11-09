@@ -19,7 +19,7 @@ Live-Atlas items stay "pending live verification" until run against a real clust
 11. feat(evaluation): retrieval dataset and script (results only from real runs) (implemented, live verification pending)
 
 ## Phase C/D: agent and memory
-12. feat(agent): structured citations, insufficient-evidence rule, tool-failure handling
+12. feat(agent): structured citations, insufficient-evidence rule, tool-failure handling (implemented, live verification pending)
 13. feat(api): streaming endpoint
 14. feat(memory): checkpoint restore through ownership, history endpoint, long-term memory with approval and deletion
 15. test: restart-survival test (pending live)

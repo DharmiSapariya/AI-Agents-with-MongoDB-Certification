@@ -4,6 +4,7 @@ These tests exercise the real LangGraph wiring, routing and tracer, but use mong
 an in-memory checkpointer and a fake model. They do not prove Atlas, Vector Search or
 OpenAI integration works.
 """
+import re
 import sys
 from types import SimpleNamespace
 
@@ -28,7 +29,8 @@ class ScriptedModel(BaseChatModel):
         return self
 
     def _generate(self, messages, stop=None, run_manager=None, **kwargs):
-        return ChatResult(generations=[ChatGeneration(message=self.replies.pop(0))])
+        reply = self.replies.pop(0)
+        return ChatResult(generations=[ChatGeneration(message=reply(messages) if callable(reply) else reply)])
 
 
 def tool_call(name, args, call_id="c1"):
@@ -55,10 +57,15 @@ def events(database, thread_id):
 
 def test_tool_call_then_answer_is_traced(agent):
     model, database = agent
-    model.replies = [tool_call("get_page_content_for_summarization", {"user_query": "Aggregation"}),
-                     AIMessage(content="Summary.")]
+    def cite(messages):
+        citation = re.search(r'citation="([^"]+)"', messages[-1].content).group(1)
+        return AIMessage(content=f"Summary. [{citation}]")
+
+    model.replies = [tool_call("get_page_content_for_summarization", {"user_query": "Aggregation"}), cite]
     result = graph.run("t1", "summarize Aggregation")
-    assert result["answer"] == "Summary." and result["fully_recorded"]
+    assert result["answer"].startswith("Summary. [S-") and result["fully_recorded"]
+    assert result["outcome"] == "answered"
+    assert result["citations"][0]["document_id"] == str(database.full_docs.find_one()["_id"])
     kinds = [e["type"] for e in events(database, "t1")]
     assert kinds == ["execution_start", "agent_decision", "tool_start", "db_operation",
                      "tool_end", "agent_decision", "execution_end"]
@@ -103,7 +110,7 @@ def test_tool_failure_is_recorded_with_its_category_and_the_agent_continues(agen
     model.replies = [tool_call("get_page_content_for_summarization", {"user_query": "Aggregation"}),
                      AIMessage(content="I could not read the page.")]
     result = graph.run("t9", "summarize Aggregation")
-    assert result["answer"] == "I could not read the page."
+    assert result["outcome"] == "retrieval_failed" and result["citations"] == []
     end = [e for e in events(database, "t9") if e["type"] == "tool_end"][0]
     assert end["data"]["status"] == "error" and end["data"]["error_category"] == "database_unavailable"
 
@@ -116,3 +123,27 @@ def test_run_stamps_events_with_the_owner(agent):
     model.replies = [AIMessage(content="ok")]
     graph.run("t11", "hi")
     assert {e["user_id"] for e in events(database, "t11")} == {None}
+
+
+def test_invented_citation_is_rejected_even_when_a_tool_returns_a_document(agent):
+    model, _ = agent
+    model.replies = [tool_call("get_page_content_for_summarization", {"user_query": "Aggregation"}),
+                     AIMessage(content="Invented claim. [S-fake-1]")]
+    result = graph.run("invented", "summarize Aggregation")
+    assert result["outcome"] == "insufficient_evidence"
+    assert result["citations"] == []
+
+
+def test_previous_turn_citation_does_not_count_as_current_evidence(agent):
+    model, _ = agent
+
+    def cite(messages):
+        citation = re.search(r'citation="([^"]+)"', messages[-1].content).group(1)
+        return AIMessage(content=f"Summary. [{citation}]")
+
+    model.replies = [tool_call("get_page_content_for_summarization", {"user_query": "Aggregation"}), cite]
+    first = graph.run("same-thread", "summarize Aggregation")
+    model.replies = [AIMessage(content=first["answer"])]
+    second = graph.run("same-thread", "what else?")
+    assert second["outcome"] == "insufficient_evidence"
+    assert second["citations"] == []

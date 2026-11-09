@@ -71,3 +71,11 @@ Session 8 checks: 271 tests passed, Ruff and Mypy clean (25 app files),
 and diff checks clean. The evaluation CLI shows an explicit credentials
 error with no local Atlas or Voyage configuration. Retrieval and metric
 tests used mocks or deterministic fixtures. No live result was observed.
+
+## Session 9 — item 12
+
+The agent returns citation metadata tied to current-turn retrieval.
+Invented and prior-turn citation IDs are rejected. The result distinguishes
+`answered`, `insufficient_evidence`, and `retrieval_failed`. Citation ID
+validation checks provenance and does not assess whether the cited text
+supports every claim. Next is item 13, authenticated execution streaming.

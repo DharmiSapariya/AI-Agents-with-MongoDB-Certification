@@ -44,6 +44,8 @@ class Tracer:
         self.thread_id = thread_id
         self.user_id = user_id  # None marks legacy/unowned events, which no API route returns
         self.agent = agent
+        self.sources: dict[str, dict] = {}
+        self.tool_failed = False
         self.seq = 0
         self.t0 = time.perf_counter()
         self.recorded_ok = True
