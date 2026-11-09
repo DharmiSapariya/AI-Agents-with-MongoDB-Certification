@@ -41,8 +41,39 @@ QUIZ: list[dict[str, Any]] = [
 ]
 
 
+_LESSON_FILES = {
+    "agent": "backend/app/graph.py",
+    "tools": "backend/app/tools.py",
+    "langgraph": "backend/app/routing.py",
+    "memory": "backend/app/memory.py",
+    "vector_search": "backend/app/retrieval.py",
+    "observability": "backend/app/tracing.py",
+}
+
+CHALLENGES = {
+    "trace-routing": {"title": "Follow the routing decision",
+                      "task": "Inspect route_tools and identify what sends a run to the tools node.",
+                      "options": ["A pending tool call", "A saved note", "An empty trace"],
+                      "answer": 0, "file": "backend/app/routing.py"},
+    "memory-scope": {"title": "Find the memory ownership guard",
+                     "task": "Inspect list_owned and identify what scopes the lookup.",
+                     "options": ["Client IP", "Verified account user ID", "Lesson title"],
+                     "answer": 1, "file": "backend/app/memory.py"},
+}
+
+
+def challenge(challenge_id: str, choice: int) -> dict:
+    item = CHALLENGES[challenge_id]
+    return {"challenge_id": challenge_id, "passed": choice == item["answer"],
+            "file": item["file"]}
+
+
 def teach(concept: str) -> dict | None:
-    return CONCEPTS.get(concept)
+    lesson = CONCEPTS.get(concept)
+    if lesson is None:
+        return None
+    return {**lesson, "file": _LESSON_FILES[concept],
+            "exercise": f"Open {_LESSON_FILES[concept]} and trace where the lesson concept appears."}
 
 
 def grade(answers: dict[str, int]) -> dict:
@@ -69,7 +100,7 @@ def explain_execution(events: list[dict]) -> dict:
         elif t == "agent_decision":
             note = "The LLM returned no tool calls, so the conditional edge routed to END with a final answer."
         elif t == "tool_start":
-            note = f"Tool '{d.get('tool')}' was executed with the recorded arguments."
+            note = f"Tool '{d.get('tool')}' started."
         elif t == "db_operation":
             note = (f"MongoDB operation {d.get('op')} on '{d.get('collection')}' returned {d.get('returned')} "
                     "document(s); this is the evidence the LLM could use next.")

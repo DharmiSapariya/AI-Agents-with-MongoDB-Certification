@@ -132,3 +132,11 @@ Published Session 10 ends at `bad8b16`. Mentor now has a separate,
 deterministic LangGraph and owned sessions, results, and event storage.
 Teach, watch, and step work without an LLM provider. Trace modes read
 a bounded, allowlisted view of owned primary executions.
+
+## Session 11 — item 17
+
+The Mentor graph now also grades quizzes and checks project challenges.
+Lessons link to relevant code and include exercises. The authenticated
+progress endpoint derives lesson views, best quiz scores, and completed
+challenges from the caller's persisted Mentor runs. Older standalone quiz
+attempts remain in their original collection.

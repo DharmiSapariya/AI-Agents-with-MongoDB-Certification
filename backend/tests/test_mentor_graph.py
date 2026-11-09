@@ -34,3 +34,25 @@ def test_mentor_has_separate_sessions_and_reads_only_owned_trace_metadata(two_us
     assert client.get(history, headers=bob["headers"]).status_code == 404
     assert len(client.get(history, headers=alice["headers"]).json()) == 3
     assert list(database.agent_execution_events.find()) == before
+
+
+def test_mentor_quiz_challenges_and_progress_are_deterministic_and_owner_scoped(two_users):
+    client, _, alice, bob = two_users
+    path = "/api/mentor/run"
+    result = client.post(path, headers=alice["headers"], json={"mode": "teach", "concept": "agent"}).json()
+    assert result["lesson"]["file"] == "backend/app/graph.py"
+    sid = result["session_id"]
+    catalog = client.get("/api/mentor/challenges").json()
+    assert all("answer" not in item for item in catalog)
+    assert client.post(path, headers=alice["headers"], json={
+        "mode": "quiz", "session_id": sid, "answers": {"q1": 1, "q2": 0, "q3": 1},
+    }).json()["score"] == 3
+    challenge = {"mode": "challenge", "session_id": sid, "challenge_id": "trace-routing"}
+    assert client.post(path, headers=alice["headers"], json={**challenge, "choice": 2}).json()["passed"] is False
+    assert client.post(path, headers=alice["headers"], json={**challenge, "choice": 0}).json()["passed"] is True
+    assert client.get("/api/mentor/progress", headers=alice["headers"]).json() == {
+        "lessons_viewed": ["agent"], "quiz": {"attempts": 1, "best_score": 3}, "challenges_passed": ["trace-routing"],
+    }
+    assert client.get("/api/mentor/progress", headers=bob["headers"]).json() == {
+        "lessons_viewed": [], "quiz": {"attempts": 0, "best_score": None}, "challenges_passed": [],
+    }

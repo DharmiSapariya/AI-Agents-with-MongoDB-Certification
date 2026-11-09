@@ -11,7 +11,7 @@ from . import mentor
 from .errors import ApiError
 from .tracing import Tracer
 
-Mode = Literal["teach", "watch", "step"]
+Mode = Literal["teach", "watch", "step", "quiz", "challenge"]
 
 
 class MentorIn(BaseModel):
@@ -21,14 +21,20 @@ class MentorIn(BaseModel):
     concept: str | None = Field(None, max_length=64)
     execution_id: str | None = Field(None, max_length=64)
     after_seq: int = Field(0, ge=0)
+    answers: dict[str, int] | None = Field(None, max_length=20)
+    challenge_id: str | None = Field(None, max_length=64)
+    choice: int | None = Field(None, ge=0, le=20)
 
     @model_validator(mode="after")
     def check_mode(self):
-        if self.mode == "teach":
-            if not self.concept or self.execution_id or self.after_seq:
-                raise ValueError("Teach requires a concept.")
-        elif not self.execution_id or self.concept or (self.mode == "watch" and self.after_seq):
-            raise ValueError("Trace modes require an execution ID. Only step accepts a sequence cursor.")
+        supplied = self.model_fields_set - {"mode", "session_id"}
+        required = {
+            "teach": {"concept"}, "watch": {"execution_id"}, "step": {"execution_id"},
+            "quiz": {"answers"}, "challenge": {"challenge_id", "choice"},
+        }[self.mode]
+        allowed = required | ({"after_seq"} if self.mode == "step" else set())
+        if supplied - allowed or any(getattr(self, key) is None for key in required):
+            raise ValueError("Fields do not match the selected Mentor mode.")
         return self
 
 
@@ -42,6 +48,9 @@ class MentorState(TypedDict, total=False):
     events: list[dict]
     after_seq: int
     result: dict
+    answers: dict[str, int]
+    challenge_id: str
+    choice: int
 
 
 _SAFE_FIELDS = {
@@ -78,14 +87,24 @@ def _step(state: MentorState) -> dict:
     return {"result": {"step": steps[0] if steps else None, "has_more": len(events) > 1}}
 
 
+def _quiz(state: MentorState) -> dict:
+    return {"result": mentor.grade(state["answers"])}
+
+
+def _challenge(state: MentorState) -> dict:
+    return {"result": mentor.challenge(state["challenge_id"], state["choice"])}
+
+
 def _build():
     graph = StateGraph(MentorState)
     graph.add_node("teach", _teach)
     graph.add_node("watch", _watch)
     graph.add_node("step", _step)
-    graph.add_conditional_edges(START, lambda state: state["mode"],
-                                {"teach": "teach", "watch": "watch", "step": "step"})
-    for mode in ("teach", "watch", "step"):
+    graph.add_node("quiz", _quiz)
+    graph.add_node("challenge", _challenge)
+    modes = ("teach", "watch", "step", "quiz", "challenge")
+    graph.add_conditional_edges(START, lambda state: state["mode"], {mode: mode for mode in modes})
+    for mode in modes:
         graph.add_edge(mode, END)
     return graph.compile()
 
@@ -127,3 +146,19 @@ def history(database, user_id: str, session_id: str, limit: int, skip: int) -> l
     owned_session(database, user_id, session_id)
     return list(database["mentor_runs"].find({"session_id": session_id, "user_id": user_id}, {"_id": 0, "user_id": 0})
                 .sort([("created_at", -1), ("_id", -1)]).skip(skip).limit(limit))
+
+
+def progress(database, user_id: str) -> dict:
+    runs = database["mentor_runs"]
+    scope = {"user_id": user_id}
+    quizzes = list(runs.aggregate([
+        {"$match": {**scope, "mode": "quiz"}},
+        {"$group": {"_id": None, "attempts": {"$sum": 1}, "best_score": {"$max": "$result.score"}}},
+        {"$project": {"_id": 0}},
+    ]))
+    return {
+        "lessons_viewed": sorted(runs.distinct("concept", {**scope, "mode": "teach"})),
+        "quiz": quizzes[0] if quizzes else {"attempts": 0, "best_score": None},
+        "challenges_passed": sorted(runs.distinct(
+            "result.challenge_id", {**scope, "mode": "challenge", "result.passed": True})),
+    }

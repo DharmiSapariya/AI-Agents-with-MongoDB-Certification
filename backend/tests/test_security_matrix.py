@@ -25,6 +25,8 @@ ROUTES = (
     ("GET", "/api/auth/me", "/api/auth/me", None, "auth", 200),
     ("GET", "/api/mentor/teach/{concept}", "/api/mentor/teach/agent", None, "public", 200),
     ("GET", "/api/mentor/quiz", "/api/mentor/quiz", None, "public", 200),
+    ("GET", "/api/mentor/challenges", "/api/mentor/challenges", None, "public", 200),
+    ("GET", "/api/mentor/progress", "/api/mentor/progress", None, "auth", 200),
     ("POST", "/api/mentor/run", "/api/mentor/run", {"mode": "teach", "concept": "agent"}, "auth", 200),
     ("POST", "/api/mentor/quiz", "/api/mentor/quiz", {"answers": {}}, "mode-dependent", 200),
     ("POST", "/api/chat", "/api/chat", {"message": "hello", "session_id": "s_alice"}, "owner", 200),

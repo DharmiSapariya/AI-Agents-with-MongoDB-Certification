@@ -187,6 +187,13 @@ def mentor_run(body: mentor_graph.MentorIn, user: auth.CurrentUser, get_db=Depen
         if lesson is None:
             raise HTTPException(404, "Concept not found.")
         state["lesson"] = lesson
+    elif body.mode == "quiz":
+        state["answers"] = body.answers or {}
+    elif body.mode == "challenge":
+        if body.challenge_id not in mentor.CHALLENGES:
+            raise HTTPException(404, "Challenge not found.")
+        state["challenge_id"] = body.challenge_id
+        state["choice"] = body.choice if body.choice is not None else -1
     else:
         execution_id = body.execution_id or ""
         _check_id(execution_id)
@@ -209,6 +216,17 @@ def mentor_history(session_id: str, user: auth.CurrentUser, limit: int = Query(2
                    skip: int = Query(0, ge=0, le=1000), get_db=Depends(db_provider)):
     _check_id(session_id)
     return mentor_graph.history(get_db(), user["_id"], session_id, limit, skip)
+
+
+@router.get("/mentor/challenges")
+def mentor_challenges():
+    return [{"id": key, **{field: value for field, value in item.items() if field != "answer"}}
+            for key, item in mentor.CHALLENGES.items()]
+
+
+@router.get("/mentor/progress")
+def mentor_progress(user: auth.CurrentUser, get_db=Depends(db_provider)):
+    return mentor_graph.progress(get_db(), user["_id"])
 
 
 @router.post("/mentor/quiz")
