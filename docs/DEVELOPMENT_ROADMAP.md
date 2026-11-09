@@ -27,7 +27,7 @@ Live-Atlas items stay "pending live verification" until run against a real clust
 ## Phase E/G: mentor and observability
 16. feat(mentor): independent graph, routes, sessions, tracing (implemented, session 11)
 17. feat(mentor): teach, watch, step-through, quiz, challenge; progress persistence (implemented, session 11)
-18. feat(observability): user ids on events, full tool results with caps, analytics endpoints
+18. feat(observability): user ids on events, full tool results with caps, analytics endpoints (implemented, session 11)
 
 ## Phase F: frontend (one commit per page group)
 19. foundation and auth; 20. playground with streaming; 21. live execution; 22. memory and explorer; 23. observability; 24. mentor and learning center; 25. benchmarks, documentation, certification

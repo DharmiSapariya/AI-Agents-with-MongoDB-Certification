@@ -253,3 +253,36 @@ pytest -q -k checkpoint_survives_fresh_graph_and_mongo_client
 The test requires permission to create and drop one randomly named database.
 It closes the first client and creates a new client and graph for the next
 turn. The LLM is scripted, and Atlas Vector Search is outside this test.
+
+### Independent Mentor and execution analytics
+
+`POST /api/mentor/run` requires a Bearer token. It creates a Mentor session
+unless you supply an owned `session_id`. The deterministic Mentor LangGraph
+supports these request bodies:
+
+| Mode | Fields beyond `mode` and optional `session_id` |
+|---|---|
+| `teach` | `concept` |
+| `watch` | Owned primary `execution_id` |
+| `step` | Owned primary `execution_id`, optional `after_seq` |
+| `quiz` | `answers` keyed by quiz question ID |
+| `challenge` | `challenge_id` and zero-based `choice` |
+
+The watch result includes up to 100 steps and a `truncated` flag. Step
+returns one event and indicates whether more are available. Both modes
+provide recorded metadata and a separate explanatory interpretation.
+The new Mentor workflow omits primary prompts, tool arguments and payloads,
+and final answer text. It does not call a model or modify primary state.
+
+`GET /api/mentor/sessions/{session_id}` returns paginated Mentor run history.
+`GET /api/mentor/challenges` provides the project challenge catalog.
+`GET /api/mentor/progress` summarizes the caller's Mentor runs. The existing
+lesson and standalone quiz endpoints remain available under their prior policies.
+
+`GET /api/analytics/summary?days=7` returns owned execution, tool, and token
+metrics from persisted primary traces. The window accepts 1–30 days.
+Unreported token totals are null. Counts reflect recorded events and may be
+incomplete when tracing fails. Provider retries internal to the SDK are
+not separately counted. New tool results are redacted before being capped at
+2,000 characters. Trace and learning records have no automatic expiry.
+Run `python scripts/create_indexes.py` after updating an existing database.

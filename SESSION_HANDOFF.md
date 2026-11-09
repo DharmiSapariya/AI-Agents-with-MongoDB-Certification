@@ -140,3 +140,19 @@ Lessons link to relevant code and include exercises. The authenticated
 progress endpoint derives lesson views, best quiz scores, and completed
 challenges from the caller's persisted Mentor runs. Older standalone quiz
 attempts remain in their original collection.
+
+## Session 11 — item 18
+
+Primary tool events retain redacted result text up to 2,000 characters and
+a truncation flag. The owner-scoped analytics API aggregates actual stored
+events over a 1–30-day window. Missing provider usage remains null.
+Verification used mongomock and scripted graph responses.
+
+Next: Session 12, items 19–20. Inspect `frontend/index.html` and the
+existing API contracts before building the React foundation, auth, and
+streaming Playground. Keep JSON chat and the existing frontend usable
+until the React flow is verified.
+
+Final local checks: 291 passed, 1 skipped, Ruff and Mypy clean (29 app
+files), and diff checks clean. The skipped real MongoDB checkpoint test
+requires `TEST_MONGODB_URI`.

@@ -205,3 +205,16 @@ def test_checkpoint_survives_fresh_graph_and_mongo_client(agent, monkeypatch):
                 assert result["outcome"] == "insufficient_evidence"
         finally:
             cleanup.drop_database(checkpoint_db)
+
+
+def test_tool_trace_caps_and_redacts_result_before_persisting(agent):
+    model, database = agent
+    database.full_docs.update_one({"title": "Aggregation"}, {"$set": {"body": "sk-1234567890-secret " + "x" * 2500}})
+    model.replies = [tool_call("get_page_content_for_summarization", {"user_query": "Aggregation"}),
+                     AIMessage(content="No evidence")]
+    graph.run("bounded-result", "summarize Aggregation")
+    event = database.agent_execution_events.find_one({"thread_id": "bounded-result", "type": "tool_end"})
+    assert len(event["data"]["result"]) == 2000
+    assert event["data"]["result_truncated"] is True
+    assert "sk-1234567890-secret" not in event["data"]["result"]
+    assert "[REDACTED]" in event["data"]["result"]

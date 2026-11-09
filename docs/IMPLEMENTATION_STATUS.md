@@ -158,3 +158,14 @@ These tests do not exercise Atlas, a reverse proxy, or multiple workers.
 
 Both chat entry points support explicit per-turn memory opt-in. Local tests
 exercise signed tokens, isolation, deletion and graph prompt construction.
+
+## Independent Mentor and observability (items 16–18)
+
+| Feature | Local evidence |
+|---|---|
+| Deterministic Mentor graph with separate sessions, runs, and events | ASGI tests cover two accounts, owner-only trace reads, ordered walkthrough, and unchanged primary records |
+| Lessons, quiz, challenges, and learning progress | Authenticated ASGI tests cover correct and incorrect answers and separate account progress |
+| Bounded tool trace output and owner-scoped analytics | Scripted graph and mocked MongoDB tests cover redaction before truncation, time windows, and missing provider usage |
+
+The Mentor workflow uses no provider. Real MongoDB aggregation, Atlas, and
+deployed behavior remain unverified.

@@ -37,6 +37,7 @@ ROUTES = (
     ("GET", "/api/sessions/{session_id}/history", "/api/sessions/s_alice/history", None, "owner", 200),
     ("GET", "/api/memory", "/api/memory", None, "auth", 200),
     ("POST", "/api/memory", "/api/memory", {"text": "Use short examples."}, "auth", 201),
+    ("GET", "/api/analytics/summary", "/api/analytics/summary", None, "auth", 200),
     ("GET", "/api/executions", "/api/executions", None, "owner-list", 200),
     ("GET", "/api/executions/{execution_id}", "/api/executions/run-alice", None, "owner", 200),
     ("GET", "/api/mentor/explain/{execution_id}", "/api/mentor/explain/run-alice", None, "owner", 200),

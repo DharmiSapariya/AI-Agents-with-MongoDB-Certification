@@ -20,7 +20,7 @@ from .logging_config import log
 from .mongo import client, db
 from .routing import route_tools
 from .tools import TOOLS
-from .tracing import CURRENT, Tracer, emit
+from .tracing import CURRENT, Tracer, emit, redact
 
 logger = logging.getLogger("app.graph")
 _memory_notes: ContextVar[tuple[str, ...]] = ContextVar("memory_notes", default=())
@@ -74,8 +74,10 @@ def build_app():
                 obs, status = "Tool failed to retrieve evidence.", "error"
                 logger.warning("tool_failed", exc_info=exc, extra={"fields": {
                     "tool": c["name"], "error_category": category, "exc_type": type(exc).__name__}})
+            safe_result = redact(obs)
             emit("tool_end", node="tools", tool=c["name"], status=status, result_chars=len(obs),
-                 result_preview=obs[:300], duration_ms=round((time.perf_counter() - t0) * 1000, 1),
+                 result_preview=safe_result[:300], result=safe_result[:2000],
+                 result_truncated=len(safe_result) > 2000, duration_ms=round((time.perf_counter() - t0) * 1000, 1),
                  **({"error_category": category} if status == "error" else {}))
             out.append(ToolMessage(content=obs, tool_call_id=c["id"]))
         return {"messages": out}

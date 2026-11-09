@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from . import auth, memory, mentor, mentor_graph, sessions
+from . import analytics, auth, memory, mentor, mentor_graph, sessions
 from .chat_stream import stream_turn
 from .config import settings
 from .deps import db_provider
@@ -166,6 +166,11 @@ def owned_events(database, user_id: str, execution_id: str) -> list[dict]:
     if not events:
         raise ExecutionNotFound()
     return events
+
+
+@router.get("/analytics/summary")
+def analytics_summary(user: auth.CurrentUser, days: int = Query(7, ge=1, le=30), get_db=Depends(db_provider)):
+    return analytics.summarize(get_db(), user["_id"], days)
 
 
 @router.get("/executions/{execution_id}")
