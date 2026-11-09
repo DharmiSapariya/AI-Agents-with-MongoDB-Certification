@@ -1,0 +1,36 @@
+:root {
+  font-family: system-ui, sans-serif; color: #e9f1eb; background: #101613;
+  color-scheme: dark; font-synthesis: none; --surface: #18221c; --line: #34473b;
+  --muted: #adc0b4; --mint: #9aefb7; --error: #ffb4a9;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: var(--mint); }
+button, input, textarea { font: inherit; }
+button { cursor: pointer; }
+button:disabled { opacity: .55; cursor: default; }
+:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
+.topbar {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem;
+  padding: 1rem clamp(1rem, 5vw, 4rem); border-bottom: 1px solid var(--line);
+}
+.brand { color: #f1faf3; font-weight: 750; text-decoration: none; }
+.brand span { color: var(--mint); margin-left: .2rem; }
+.top-actions { display: flex; align-items: center; gap: .75rem; }
+.badge { border: 1px solid var(--line); color: var(--mint); border-radius: 1rem; padding: .3rem .65rem; font-size: .85rem; }
+.shell { width: min(100% - 2rem, 72rem); margin: clamp(2rem, 6vw, 4rem) auto; }
+.eyebrow { color: var(--mint); font: 700 .75rem ui-monospace, monospace; letter-spacing: .13em; }
+h1 { margin: .45rem 0; font-size: clamp(2.3rem, 6vw, 4rem); letter-spacing: -.055em; line-height: 1.05; }
+h2 { margin: 0 0 .85rem; font-size: 1.3rem; }
+.intro { color: var(--muted); margin-bottom: 1.8rem; }
+.card { padding: 1.3rem; background: var(--surface); border: 1px solid var(--line); border-radius: 1rem; min-width: 0; }
+.auth { max-width: 27rem; }
+fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: .85rem; }
+label { display: grid; gap: .4rem; }
+input, textarea { color: inherit; background: #101913; border: 1px solid var(--line); border-radius: .5rem; padding: .65rem; min-width: 0; }
+.primary, .quiet { padding: .55rem .8rem; border-radius: .55rem; font-weight: 650; }
+.primary { color: #092317; background: var(--mint); border: 1px solid var(--mint); }
+.quiet { color: var(--mint); background: transparent; border: 1px solid var(--line); }
+.auth > .quiet { margin-top: .9rem; }
+.notice, .error { padding: .75rem; border: 1px solid var(--line); border-radius: .6rem; overflow-wrap: anywhere; }
+.error { color: var(--error); }

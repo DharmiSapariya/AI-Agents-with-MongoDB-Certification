@@ -156,3 +156,10 @@ until the React flow is verified.
 Final local checks: 291 passed, 1 skipped, Ruff and Mypy clean (29 app
 files), and diff checks clean. The skipped real MongoDB checkpoint test
 requires `TEST_MONGODB_URI`.
+
+## Session 12 — item 19
+
+React and TypeScript foundation lives in `frontend/playground`. It uses the
+existing account API, keeps its bearer token in memory, and displays
+backend readiness. Vite proxies API and health calls to port 8000 in
+development. The existing FastAPI-served frontend remains available.
