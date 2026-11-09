@@ -332,3 +332,24 @@ architecture, curriculum, and the official credential. To inspect an
 evaluation, import the JSON produced by `scripts/evaluate_retrieval.py`.
 The file stays in the browser tab. Its run mode is shown as declared by
 the file, and the app ships no measured results.
+
+### Save comparable retrieval benchmark runs
+
+Use the same isolated corpus, vector index, score threshold, dataset, and
+`--top-k` for both strategies. Run from a clean checkout and use a separate
+`CHECKPOINT_DB` for agent runs. The agent strategy calls OpenAI and writes
+benchmark traces and checkpoints. Use an isolated benchmark deployment.
+
+```bash
+python scripts/evaluate_retrieval.py --strategy vector --top-k 5 --output-dir benchmark-results
+python scripts/evaluate_retrieval.py --strategy agent --top-k 5 --output-dir benchmark-results --allow-agent-writes
+```
+
+Reports include a run ID, UTC timestamp, Git revision when available,
+dataset SHA-256, and model and index settings. Compare Recall@k and MRR@k
+over the same answerable cases. Vector ranks are search order. Agent ranks
+are citation order, so this comparison measures what each approach
+surfaces. Failed answerable cases score zero and are counted separately.
+The runner saves its report and exits nonzero if any case fails. The
+React report viewer accepts either strategy's JSON. No live results are
+bundled.

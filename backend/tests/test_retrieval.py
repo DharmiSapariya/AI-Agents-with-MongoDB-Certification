@@ -85,3 +85,24 @@ def test_retrieval_metrics_use_unique_matches_and_exclude_unanswerable_cases():
     assert result["answerable_count"] == 2
     assert result["cases"][2]["returned_no_evidence"] is False
     assert result["cases"][2]["recall"] is None
+
+
+def test_failed_cases_stay_in_the_benchmark_denominator(tmp_path):
+    import json
+
+    from scripts.evaluate_retrieval import evaluate, save_report
+
+    from app.errors import EmbeddingError
+
+    def failed(_query):
+        raise EmbeddingError("private provider detail")
+
+    rows = [{"id": "case", "query": "test", "expected_sources": ["wanted"]}]
+    report = {"run_id": "example", **evaluate(rows, failed, capture_failures=True)}
+    assert report["failed_cases"] == 1 and report["recall_at_k"] == 0
+    assert report["cases"][0]["error"] == "embedding_provider_error"
+    saved = save_report(tmp_path, report)
+    assert json.loads(saved.read_text()) == report
+    assert "private provider detail" not in saved.read_text()
+    with pytest.raises(FileExistsError):
+        save_report(tmp_path, report)

@@ -221,3 +221,12 @@ Next: Session 15, items 26–27. Build the reproducible benchmark runner and
 stored run format, then harden Docker and wire frontend checks into CI.
 Start with `scripts/evaluate_retrieval.py`, `benchmarks/retrieval`,
 `deployment/`, and `.github/workflows/ci.yml`.
+
+## Session 15 — item 26
+
+Built on published Session 14 at `286ee58`. The evaluator supports vector
+and agent strategies and saves versioned per-run JSON. Metadata records the
+dataset hash, Git revision, timestamp and settings. Failure codes are
+recorded without raw provider details. The report viewer imports both
+strategies and distinguishes failure from no evidence. Live evaluation
+still needs an isolated Atlas corpus, Voyage, and OpenAI for agent mode.

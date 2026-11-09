@@ -19,3 +19,9 @@ test('rejects unsupported formats, inconsistent counts, and out-of-range scores'
     assert.throws(() => parseBenchmark(JSON.stringify(value)), /report format/)
   }
 })
+
+test('imports recorded failures without treating them as measured abstentions', () => {
+  const failed = { ...report, strategy: 'agent', run_id: 'abc', failed_cases: 1,
+    cases: [{ ...report.cases[0], returned_no_evidence: null, error: 'timeout' }] }
+  assert.deepEqual(parseBenchmark(JSON.stringify(failed)), failed)
+})

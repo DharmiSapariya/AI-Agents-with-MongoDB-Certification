@@ -65,9 +65,11 @@ export function ResourcesView() {
         <p className="muted wrap">Imported file {fileName} · Mode declared in report {report.mode}</p>
         <dl className="event-detail">
           <dt>Dataset</dt><dd>{report.dataset_version}</dd>
+          {report.strategy && <><dt>Strategy</dt><dd>{report.strategy}</dd></>}
+          {report.run_id && <><dt>Run ID</dt><dd>{report.run_id}</dd></>}
           <dt>Model</dt><dd>{report.model} · {report.dimensions} dimensions</dd>
           <dt>Index</dt><dd>{report.index} · threshold {report.min_score}</dd>
-          <dt>Cases</dt><dd>{report.case_count} total · {report.answerable_count} answerable</dd>
+          <dt>Cases</dt><dd>{report.case_count} total · {report.answerable_count} answerable{report.failed_cases != null && ` · ${report.failed_cases} failed`}</dd>
           <dt>Recall@{report.top_k}</dt><dd>{score(report.recall_at_k)}</dd>
           <dt>MRR@{report.top_k}</dt><dd>{score(report.mrr_at_k)}</dd>
         </dl>
@@ -76,7 +78,7 @@ export function ResourcesView() {
             <th scope="col">Evidence returned</th><th scope="col">Latency</th></tr></thead>
           <tbody>{report.cases.map(item => <tr key={item.id}><th scope="row">{item.id}</th>
             <td>{score(item.recall)}</td><td>{score(item.reciprocal_rank)}</td>
-            <td>{item.returned_no_evidence ? 'No' : 'Yes'}</td><td>{item.latency_ms} ms</td></tr>)}</tbody>
+            <td>{item.error ? `Failed: ${item.error}` : item.returned_no_evidence == null ? 'Unavailable' : item.returned_no_evidence ? 'No' : 'Yes'}</td><td>{item.latency_ms} ms</td></tr>)}</tbody>
         </table></div>}
         <button className="quiet section-actions" onClick={() => setReport(undefined)}>Clear report</button>
       </>}
