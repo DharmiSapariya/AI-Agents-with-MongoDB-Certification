@@ -68,7 +68,7 @@ class Limits:
             return Route("register", self.register_ip, self.max_auth_body_bytes)
         if method == "POST" and path == "/api/auth/login":
             return Route("login", self.login_ip, self.max_auth_body_bytes)
-        if method == "POST" and path == "/api/chat":
+        if method == "POST" and path in {"/api/chat", "/api/chat/stream"}:
             return Route("chat", self.chat_ip, self.max_body_bytes)
         if path.startswith("/api/"):
             return Route("read", self.read_ip, self.max_body_bytes)

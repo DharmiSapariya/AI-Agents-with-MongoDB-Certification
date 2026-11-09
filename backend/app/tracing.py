@@ -4,7 +4,7 @@ import time
 import uuid
 from contextvars import ContextVar
 from datetime import datetime, timezone
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 from .context import request_id_var
 
@@ -38,7 +38,7 @@ class Tracer:
     """Writes one document per event to `agent_execution_events`."""
 
     def __init__(self, collection, thread_id: str, agent: str, user_input: str, model: str = "",
-                 user_id: str | None = None):
+                 user_id: str | None = None, on_event: Callable[[dict], None] | None = None):
         self.col = collection
         self.execution_id = uuid.uuid4().hex
         self.thread_id = thread_id
@@ -46,6 +46,7 @@ class Tracer:
         self.agent = agent
         self.sources: dict[str, dict] = {}
         self.tool_failed = False
+        self.on_event = on_event
         self.seq = 0
         self.t0 = time.perf_counter()
         self.recorded_ok = True
@@ -64,12 +65,14 @@ class Tracer:
         except Exception as exc:  # never claim full recording if a write failed
             self.recorded_ok = False
             self.errors.append(f"{type(exc).__name__}: {exc}")
+        if self.on_event is not None:
+            self.on_event({key: doc[key] for key in ("execution_id", "request_id", "seq", "type", "node")})
         return doc
 
-    def finish(self, status: str, final_answer: str = "") -> None:
+    def finish(self, status: str, final_answer: str = "", **data: Any) -> None:
         self.emit("execution_end", node="END", status=status,
                   duration_ms=round((time.perf_counter() - self.t0) * 1000, 1),
-                  final_answer=final_answer, fully_recorded=self.recorded_ok)
+                  final_answer=final_answer, fully_recorded=self.recorded_ok, **data)
 
 
 CURRENT: ContextVar[Tracer | None] = ContextVar("current_tracer", default=None)

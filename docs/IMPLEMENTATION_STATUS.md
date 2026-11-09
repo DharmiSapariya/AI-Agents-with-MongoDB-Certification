@@ -86,13 +86,13 @@ Scope: **public**, **auth** (any signed-in user; 503 `demo_mode` first when not 
 | `GET /api/auth/me` | auth | |
 | `GET /api/mentor/teach/{concept}`, `GET /api/mentor/quiz` | public | static content, no database access |
 | `POST /api/mentor/quiz` | auth when accounts are enabled, anonymous in demo | attempt stored with the token's user id; body may not carry a user id |
-| `POST /api/chat` | owner | body `{session_id?, message}`; omitting `session_id` creates a session; `thread_id`/`user_id` in the body are rejected (422) |
+| `POST /api/chat`, `POST /api/chat/stream` | owner | body `{session_id?, message}`; omitting `session_id` creates a session; `thread_id`/`user_id` in the body are rejected (422) |
 | `GET /api/sessions`, `GET /api/sessions/{id}` | owner | newest first; `limit` 1-50, `skip` 0-1000 |
 | `GET /api/executions`, `GET /api/executions/{id}` | owner | events carry `user_id`; `limit` 1-100, `skip` 0-1000 |
 | `GET /api/mentor/explain/{id}` | owner | same lookup as executions |
 | `GET /api/db/collections`, `GET /api/db/sample/{name}` | auth | fixed allowlist: `full_docs`, `chunked_docs` (shared, fixed fields, no body/embedding) and `sessions`, `agent_execution_events`, `quiz_attempts` (owner-filtered); `users`, checkpoints and everything else return 403; `limit` 1-20, `skip` 0-1000 |
 
-Not yet present, and must use `sessions.get_owned` when added: conversation history/messages endpoint (roadmap 14), streaming endpoint (13), long-term memory (14). Checkpoints are never exposed directly; the graph only receives thread ids that come from an owned session.
+Not yet present, and must use `sessions.get_owned` when added: conversation history/messages endpoint (roadmap 14), long-term memory (14). Checkpoints are never exposed directly; the graph only receives thread ids that come from an owned session.
 
 **Legacy data:** events and quiz attempts written before item 6 have no `user_id`. Every query filters on `user_id`, so they match no user and are never returned or assigned to anyone. They remain in MongoDB. No migration is provided; if one is wanted later it must be an explicit operator script with a named target user.
 
@@ -139,3 +139,11 @@ These tests do not exercise Atlas, a reverse proxy, or multiple workers.
 | Shared Voyage adapter | Query payload and invalid vector handling exercised with a stubbed provider | Live Voyage response for the configured model |
 | Atlas index and search | Mocked index states, idempotent setup, score filtering and source projection | Index creation and query on Atlas with the intended permissions |
 | Retrieval evaluation | Original corpus, case file, metric calculation tested with fixed inputs | Live ingestion, query results and evaluation report |
+
+## Citation provenance and chat events (items 12–13)
+
+| Feature | Verification |
+|---|---|
+| Current-turn citation provenance and explicit evidence outcomes | Real LangGraph wiring with a scripted model, mongomock, and an in-memory checkpointer |
+| Authenticated POST chat SSE | ASGI tests with signed tokens, scoped sessions, shared chat budgets, safe progress fields, and terminal results/errors |
+| Atlas, Voyage, OpenAI, and deployed streaming | Pending live verification |

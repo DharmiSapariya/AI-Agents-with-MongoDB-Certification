@@ -27,6 +27,8 @@ ROUTES = (
     ("GET", "/api/mentor/quiz", "/api/mentor/quiz", None, "public", 200),
     ("POST", "/api/mentor/quiz", "/api/mentor/quiz", {"answers": {}}, "mode-dependent", 200),
     ("POST", "/api/chat", "/api/chat", {"message": "hello", "session_id": "s_alice"}, "owner", 200),
+    ("POST", "/api/chat/stream", "/api/chat/stream",
+     {"message": "hello", "session_id": "s_alice"}, "owner", 200),
     ("GET", "/api/sessions", "/api/sessions", None, "owner-list", 200),
     ("GET", "/api/sessions/{session_id}", "/api/sessions/s_alice", None, "owner", 200),
     ("GET", "/api/executions", "/api/executions", None, "owner-list", 200),
@@ -51,7 +53,7 @@ def seeded(two_users, monkeypatch):
     client, database, alice, bob = two_users
     calls = []
 
-    def run(thread_id, message, user_id):
+    def run(thread_id, message, user_id, on_event=None):
         calls.append((thread_id, message, user_id))
         return {"answer": "ok"}
 
@@ -111,7 +113,9 @@ def test_route_policy(seeded, method, registered, path, body, policy, success):
     response = client.request(method, path, json=body, headers=alice["headers"])
     assert response.status_code == success, response.text
     assert not any(value in response.text for value in ("s_bob", "s_legacy", "private-bob", "private-legacy"))
-    if method == "POST" and path == "/api/chat":
+    if method == "POST" and path.startswith("/api/chat"):
+        if path.endswith("/stream"):
+            assert "event: result" in response.text
         assert calls == [("s_alice", "hello", alice["id"])]
 
 

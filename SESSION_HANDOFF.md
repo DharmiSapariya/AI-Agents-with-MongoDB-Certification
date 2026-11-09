@@ -79,3 +79,21 @@ Invented and prior-turn citation IDs are rejected. The result distinguishes
 `answered`, `insufficient_evidence`, and `retrieval_failed`. Citation ID
 validation checks provenance and does not assess whether the cited text
 supports every claim. Next is item 13, authenticated execution streaming.
+
+## Session 9 — item 13
+
+Published Sessions 7–8 were confirmed at `fdf2882`. Chat SSE shares the
+JSON route's owner checks, account and IP limits. It emits session, trace,
+and terminal result or failure frames. Trace frames contain metadata only.
+The final answer arrives in the result. A dropped connection can leave a
+graph run completing in the background. Live provider and deployment checks
+remain pending.
+
+Next: item 14. Inspect the MongoDB checkpointer and the existing
+`sessions.get_owned` path before implementing owned conversation history
+and the separate long-term memory feature. Then item 15 tests restart
+survival against persistent MongoDB.
+
+Local checks: 277 tests passed, Ruff and Mypy clean (26 app files), and
+diff checks clean. The scripted graph and ASGI tests do not establish
+real-provider grounding or deployment behavior.

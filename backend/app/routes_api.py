@@ -8,9 +8,11 @@ import re
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from . import auth, mentor, sessions
+from .chat_stream import stream_turn
 from .config import settings
 from .deps import db_provider
 from .errors import DemoMode, ExecutionNotFound, RateLimited
@@ -78,17 +80,29 @@ def _check_id(value: str) -> None:
         raise HTTPException(400, "bad id")
 
 
+def _chat_session(database, user_id: str, session_id: str | None) -> str:
+    if session_id:
+        return sessions.get_owned(database, user_id, session_id)["_id"]
+    return sessions.create(database, user_id)["_id"]
+
+
 @router.post("/chat")
 def chat(body: ChatIn, user: LiveUser, _budget: Annotated[None, Depends(chat_budget)], get_db=Depends(db_provider)):
     database = get_db()
-    if body.session_id:
-        session = sessions.get_owned(database, user["_id"], body.session_id)
-    else:
-        session = sessions.create(database, user["_id"])
+    session_id = _chat_session(database, user["_id"], body.session_id)
     from .graph import run
-    result = run(session["_id"], body.message, user_id=user["_id"])
-    sessions.record_turn(database, session["_id"])
-    return {**result, "session_id": session["_id"]}
+    result = run(session_id, body.message, user_id=user["_id"])
+    sessions.record_turn(database, session_id)
+    return {**result, "session_id": session_id}
+
+
+@router.post("/chat/stream", response_class=StreamingResponse,
+             responses={200: {"content": {"text/event-stream": {}}}})
+def chat_stream(body: ChatIn, user: LiveUser, _budget: Annotated[None, Depends(chat_budget)], get_db=Depends(db_provider)):
+    database = get_db()
+    session_id = _chat_session(database, user["_id"], body.session_id)
+    return StreamingResponse(stream_turn(database, session_id, body.message, user["_id"]),
+                             media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
 
 @router.get("/sessions", response_model=list[sessions.PublicSession])

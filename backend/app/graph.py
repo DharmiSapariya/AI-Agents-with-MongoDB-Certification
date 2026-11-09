@@ -2,7 +2,7 @@
 import logging
 import re
 import time
-from typing import Annotated
+from typing import Annotated, Callable
 
 from langchain_core.messages import ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -99,11 +99,12 @@ def _ground_answer(content, tracer: Tracer) -> dict:
             "outcome": "insufficient_evidence", "citations": []}
 
 
-def run(thread_id: str, user_input: str, user_id: str | None = None) -> dict:
+def run(thread_id: str, user_input: str, user_id: str | None = None,
+        on_event: Callable[[dict], None] | None = None) -> dict:
     global _app
     _app = _app or build_app()
     tracer = Tracer(db()["agent_execution_events"], thread_id, "primary", user_input, settings.llm_model,
-                    user_id=user_id)
+                    user_id=user_id, on_event=on_event)
     token = CURRENT.set(tracer)
     exec_token = execution_id_var.set(tracer.execution_id)
     started = time.perf_counter()
@@ -114,7 +115,7 @@ def run(thread_id: str, user_input: str, user_id: str | None = None) -> dict:
                              {"configurable": {"thread_id": thread_id},
                               "recursion_limit": settings.max_graph_steps})
         response = _ground_answer(result["messages"][-1].content, tracer)
-        tracer.finish("success", response["answer"])
+        tracer.finish("success", response["answer"], outcome=response["outcome"], citations=response["citations"])
         log(logger, logging.INFO, "execution_finished", status="success", events=tracer.seq,
             fully_recorded=tracer.recorded_ok, duration_ms=round((time.perf_counter() - started) * 1000, 1))
         return {**response, "execution_id": tracer.execution_id, "fully_recorded": tracer.recorded_ok}

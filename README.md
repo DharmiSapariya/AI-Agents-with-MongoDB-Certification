@@ -198,3 +198,28 @@ Secrets come from env only and are redacted from traces. Retrieved text is wrapp
 
 ## Credits
 MongoDB University: *AI Agents with MongoDB* course.
+
+### Chat answers and execution streams
+
+`POST /api/chat` returns `answer`, `outcome`, `citations`, `execution_id`,
+`fully_recorded`, and `session_id`. Outcomes are `answered`,
+`insufficient_evidence`, and `retrieval_failed`. Citations identify the
+retrieved MongoDB record and its collection, title, and available source
+metadata. The server checks citation IDs against the current execution.
+This checks provenance. It does not verify that the evidence supports
+every claim in the answer.
+
+For execution progress, send the same JSON body and Bearer token to
+`POST /api/chat/stream` using a client that can read a POST response
+incrementally. The stream shares the JSON route's IP and account budgets.
+Authentication, size limits, and session ownership are checked before SSE
+headers are sent. The stream begins with a `session` frame, followed by
+`trace` frames with execution ID, sequence, request ID, type, and node.
+The terminal frame is `result` with the chat payload or `failed` with
+the structured API error. The final answer is delivered as one result.
+
+Progress is best-effort. A slow client can see sequence gaps, and an
+authorized client can fetch persisted events at `GET /api/executions/{id}`
+when recording succeeded. Disconnecting stops delivery. A synchronous
+graph run already in progress can still finish and save the turn.
+Treat a retry as a new turn. This endpoint has no replay or idempotency key.
