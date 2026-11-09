@@ -31,3 +31,14 @@ Baseline: 238 tests passed. Session 7: 262 passed, Ruff and Mypy clean
 (23 app files), and diff checks clean. Removing the session owner filter in
 an isolated copy caused three targeted tests to fail. The committed source
 retains the filter. Live Atlas and providers were not exercised.
+
+## Session 8 checkpoint — item 9
+
+Ingestion and query embeddings now share a Voyage adapter and validate
+vector count, dimensions, and finite coordinates. Voyage timeout and
+retry settings now also apply to the ingestion script. The query regression
+verifies that an invalid vector does not reach MongoDB. Next: item 10,
+index readiness, idempotent setup, and retrieval diagnostics.
+
+Item 9 checks: 263 passed, Ruff and Mypy clean (24 app files).
+The provider was stubbed. Voyage and Atlas credentials are unavailable here.

@@ -14,7 +14,7 @@ Live-Atlas items stay "pending live verification" until run against a real clust
 8. test(security): cross-user access tests for every route (done, session 7)
 
 ## Phase B: retrieval
-9. feat(embeddings): provider interface, Voyage implementation, query-side dimension check
+9. feat(embeddings): provider interface, Voyage implementation, query-side dimension check (done, session 8)
 10. feat(search): threshold, index-not-ready error, diagnostics; idempotent index script that waits
 11. feat(evaluation): retrieval dataset and script (results only from real runs)
 

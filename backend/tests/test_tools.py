@@ -32,8 +32,24 @@ def test_query_embedding_is_sent_as_a_list(monkeypatch):
 
         def embed(self, texts, **kwargs):
             seen["texts"], seen["kwargs"] = texts, kwargs
-            return SimpleNamespace(embeddings=[[0.5, 0.25]])
+            return SimpleNamespace(embeddings=[[0.5, 0.25] + [0.0] * (tools.settings.embedding_dims - 2)])
 
     monkeypatch.setitem(sys.modules, "voyageai", SimpleNamespace(Client=FakeVoyage))
-    assert tools.generate_embedding("what is a pipeline") == [0.5, 0.25]
+    assert tools.generate_embedding("what is a pipeline") == [0.5, 0.25] + [0.0] * (tools.settings.embedding_dims - 2)
     assert seen["texts"] == ["what is a pipeline"] and seen["kwargs"]["input_type"] == "query"
+
+
+def test_invalid_query_vector_does_not_reach_mongodb(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    import pytest
+
+    from app.errors import EmbeddingError
+
+    monkeypatch.setitem(sys.modules, "voyageai", SimpleNamespace(
+        Client=lambda **_: SimpleNamespace(embed=lambda *args, **kwargs: SimpleNamespace(embeddings=[[1.0]])),
+    ))
+    monkeypatch.setattr(tools, "db", lambda: pytest.fail("invalid query reached MongoDB"))
+    with pytest.raises(EmbeddingError, match="configured dimensions"):
+        tools.get_information_for_question_answering.invoke({"user_query": "example"})

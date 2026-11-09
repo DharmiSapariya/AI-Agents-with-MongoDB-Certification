@@ -7,18 +7,17 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
-import voyageai
-
 from app.config import settings
+from app.embeddings import EmbeddingProvider, VoyageEmbeddingProvider
 from app.ingest import ingest_document
 from app.mongo import db
 
 
 def main(folder: str) -> None:
-    voyage = voyageai.Client(api_key=settings.voyage_api_key)
+    provider: EmbeddingProvider = VoyageEmbeddingProvider(settings)
 
     def embed(texts):
-        return voyage.embed(list(texts), model=settings.embedding_model, input_type="document").embeddings
+        return provider.embed(texts, "document")
 
     full, chunked = db()["full_docs"], db()["chunked_docs"]
     for name in sorted(os.listdir(folder)):

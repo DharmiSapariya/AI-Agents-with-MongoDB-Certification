@@ -2,12 +2,11 @@
 import html
 import re
 import time
-from typing import List
 
 from langchain_core.tools import tool
 
 from .config import settings
-from .errors import EmbeddingError
+from .embeddings import VoyageEmbeddingProvider
 from .mongo import db
 from .tracing import emit
 
@@ -20,15 +19,8 @@ def wrap_document(title: str, body: str) -> str:
     return f'<retrieved_document title="{html.escape(title, quote=True)}">\n{safe_body}\n</retrieved_document>'
 
 
-def generate_embedding(text: str) -> List[float]:
-    import voyageai
-    try:
-        c = voyageai.Client(api_key=settings.voyage_api_key, max_retries=settings.embedding_max_retries,
-                            timeout=settings.embedding_timeout_s)
-        result = c.embed([text], model=settings.embedding_model, input_type="query")
-    except Exception as exc:
-        raise EmbeddingError() from exc
-    return [float(x) for x in result.embeddings[0]]
+def generate_embedding(text: str) -> list[float]:
+    return VoyageEmbeddingProvider(settings).embed([text], "query")[0]
 
 
 @tool
