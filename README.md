@@ -311,3 +311,9 @@ serves the original UI. To build or test the React app, run `npm run build`
 or `npm test` from `frontend/playground`. The build goes to
 `frontend/playground/dist`. Production hosting must route same-origin
 `/api` and `/health` to FastAPI and allow streaming responses.
+
+After signing in, use the workspace navigation to open **Execution Replay**,
+**Memory Studio**, **MongoDB Explorer**, or **Analytics**. Replay plays saved
+events in their recorded order at a fixed pace. The Explorer shows API-selected
+samples, and Analytics reports stored events from your account. You can also
+open a saved execution from its chat turn with **Replay run**.

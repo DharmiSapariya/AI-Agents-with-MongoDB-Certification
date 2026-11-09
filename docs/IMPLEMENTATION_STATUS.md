@@ -177,4 +177,13 @@ account, session history, and streaming chat APIs. It supports account
 registration and sign-in, owned session selection, cancellation of stream
 delivery, citation inspection, and optional saved notes. Legacy HTML
 remains usable through the backend. Dedicated replay and operations
-screens are planned for Session 13.
+screens were added in Session 13.
+
+## React workspace operations (items 21–23)
+
+| View | API and behavior |
+|---|---|
+| Execution Replay | Lists owned completed runs and plays saved trace events in order. Playground links open a selected run. Sequence gaps or incomplete terminal events are surfaced. |
+| Memory Studio | Lists, saves and deletes owned personalization notes. Deletion requires an explicit second action. |
+| MongoDB Explorer | Lists API-allowed collections and paginated record samples, distinguishing owned data from shared catalog data. |
+| Analytics | Shows recorded execution, latency, tool and usage aggregates across selectable time windows. Missing provider usage remains unavailable. |
