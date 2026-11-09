@@ -30,7 +30,8 @@ function Citations({ items }: { items: Citation[] }) {
   </details>
 }
 
-export function Playground({ token, email, onExpired }: { token: string; email: string; onExpired: () => void }) {
+export function Playground({ token, email, onExpired, onInspect }: { token: string; email: string; onExpired: () => void;
+  onInspect: (id: string) => void }) {
   const [sessions, setSessions] = useState<Session[]>()
   const [selected, setSelected] = useState<string>()
   const [history, setHistory] = useState<Turn[]>()
@@ -163,6 +164,7 @@ export function Playground({ token, email, onExpired }: { token: string; email: 
         <p className="question">{turn.question ?? 'Question unavailable in trace'}</p>
         <p>{turn.answer ?? 'This run ended without a recorded answer.'}</p>
         <Citations items={turn.citations} />
+        <button className="quiet" onClick={() => onInspect(turn.execution_id)}>Replay run</button>
       </article>)}
       {!alreadyRecorded && prompt && <article className="turn">
         <p className="question">{prompt}</p>
@@ -172,7 +174,8 @@ export function Playground({ token, email, onExpired }: { token: string; email: 
         <ol>{trace.map(item => <li key={item.seq}>{item.seq}. {item.type}{item.node ? ` · ${item.node}` : ''}</li>)}</ol>
       </details>}
       {result && <p className="muted wrap">Run {result.execution_id} · {result.outcome.replaceAll('_', ' ')}
-        {!result.fully_recorded && ' · trace incomplete'}</p>}
+        {!result.fully_recorded && ' · trace incomplete'} {' '}
+        <button className="quiet" onClick={() => onInspect(result.execution_id)}>Replay run</button></p>}
       {error && <p className="error" role="alert">{error}</p>}
       {activity && <p className="muted" role="status">{activity}</p>}
       <form className="composer" onSubmit={send}>

@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { createRoot } from 'react-dom/client'
 import { errorText, health, json, type Health, type Token, type User } from './api'
+import { ExecutionReplay } from './ExecutionReplay'
 import { Playground } from './Playground'
 import './style.css'
+
+type View = 'playground' | 'executions'
+const VIEWS: { id: View; label: string; intro: string }[] = [
+  { id: 'playground', label: 'Agent Playground', intro: 'Ask about MongoDB, follow the execution, and check the evidence behind the answer.' },
+  { id: 'executions', label: 'Execution Replay', intro: 'Inspect the events recorded during your saved agent runs.' },
+]
 
 type Account = { user: User; token: string; expiresAt: number }
 
@@ -57,6 +64,10 @@ function App() {
   const [healthCheck, setHealthCheck] = useState(0)
   const [account, setAccount] = useState<Account>()
   const [notice, setNotice] = useState('')
+  const [view, setView] = useState<View>('playground')
+  const [execution, setExecution] = useState<string>()
+  const activeView = VIEWS.find(item => item.id === (account ? view : 'playground'))!
+  const showExecution = (id: string) => { setExecution(id); setView('executions') }
   useEffect(() => {
     const controller = new AbortController()
     health(controller.signal).then(setStatus).catch(() => {
@@ -86,8 +97,8 @@ function App() {
     </header>
     <main id="main" className="shell">
       <p className="eyebrow">WORKSPACE / PRIMARY AGENT</p>
-      <h1>Agent Playground</h1>
-      <p className="intro">Ask about MongoDB, follow the execution, and check the evidence behind the answer.</p>
+      <h1>{activeView.label}</h1>
+      <p className="intro">{activeView.intro}</p>
       {healthFailed && <p className="notice" role="alert">The backend is unavailable. <button className="quiet" onClick={() => {
         setHealthFailed(false)
         setHealthCheck(healthCheck + 1)
@@ -95,9 +106,21 @@ function App() {
       {status?.status === 'degraded' && <p className="notice" role="status">The backend is running but MongoDB is unavailable.</p>}
       {authUnavailable && <p className="notice" role="status">Account access is unavailable in this configuration. The existing backend page still offers the demo lessons and quiz.</p>}
       {notice && <p className="notice" role="status">{notice}</p>}
-      {account ? <Playground token={account.token} email={account.user.email} onExpired={expire} />
+      {account ? <>
+        <nav className="workspace-nav" aria-label="Workspace">
+          {VIEWS.map(item => <button className="quiet" key={item.id} aria-current={view === item.id ? 'page' : undefined}
+            onClick={() => setView(item.id)}>{item.label}</button>)}
+        </nav>
+        <div hidden={view !== 'playground'}>
+          <Playground token={account.token} email={account.user.email} onExpired={expire} onInspect={showExecution} />
+        </div>
+        {view === 'executions' && <ExecutionReplay token={account.token} onExpired={expire}
+          selected={execution} onSelect={setExecution} />}
+      </>
         : <AuthForm disabled={Boolean(authUnavailable || healthFailed)} onSignIn={value => {
           setNotice('')
+          setView('playground')
+          setExecution(undefined)
           setAccount(value)
         }} />}
     </main>

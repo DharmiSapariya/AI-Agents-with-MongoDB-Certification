@@ -55,3 +55,9 @@ input, textarea { color: inherit; background: #101913; border: 1px solid var(--l
   .workspace { grid-template-columns: 1fr; }
   .session-list { max-height: 11rem; overflow-y: auto; }
 }
+.workspace-nav, .button-row { display: flex; flex-wrap: wrap; gap: .5rem; }
+.workspace-nav { margin-bottom: 1rem; }
+.workspace-nav [aria-current], .session-list [aria-current] { background: #294a34; }
+.event-detail { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .4rem 1rem; }
+.event-detail dt { color: var(--muted); }
+.event-detail dd { margin: 0; overflow-wrap: anywhere; }
