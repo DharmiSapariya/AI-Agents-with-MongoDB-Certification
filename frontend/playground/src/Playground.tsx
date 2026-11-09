@@ -37,6 +37,9 @@ export function Playground({ token, email, onExpired, onInspect }: { token: stri
   const [history, setHistory] = useState<Turn[]>()
   const [revision, setRevision] = useState(0)
   const [message, setMessage] = useState('')
+  const [sessionFilter, setSessionFilter] = useState('')
+  const [showInspector, setShowInspector] = useState(true)
+  const [copyStatus, setCopyStatus] = useState('')
   const [memory, setMemory] = useState(false)
   const [prompt, setPrompt] = useState('')
   const [trace, setTrace] = useState<Trace[]>([])
@@ -136,18 +139,32 @@ export function Playground({ token, email, onExpired, onInspect }: { token: stri
     }
   }
 
+  const filteredSessions = sessions?.filter(session => session.id.toLowerCase().includes(sessionFilter.trim().toLowerCase()))
+  async function copyAnswer(answer: string) {
+    try {
+      await navigator.clipboard.writeText(answer)
+      setCopyStatus('Answer copied.')
+    } catch {
+      setCopyStatus('Clipboard unavailable. You can still select and copy the answer.')
+    }
+  }
+
   const recent = history ? [...history].reverse() : []
   const alreadyRecorded = result && recent.some(turn => turn.execution_id === result.execution_id)
 
-  return <div className="workspace">
+  return <div className={`workspace chat-layout ${showInspector ? "with-inspector" : ""}`}>
     <aside className="card sessions" aria-labelledby="sessions-heading">
       <p className="eyebrow">YOUR WORKSPACE</p>
       <h2 id="sessions-heading">Sessions</h2>
       <p className="muted wrap">{email}</p>
       <button className="quiet" disabled={busy || !selected} onClick={() => select()}>New chat</button>
+      {sessions && sessions.length > 0 && <label className="session-search">Find by session ID
+        <input type="search" value={sessionFilter} onChange={event => setSessionFilter(event.target.value)} />
+      </label>}
       {listError ? <p className="error" role="alert">{listError}</p> : !sessions ? <p>Loading sessions…</p>
         : !sessions.length ? <p className="muted">No sessions yet.</p>
-        : <ul className="session-list">{sessions.map(session =>
+        : !filteredSessions?.length ? <p className="muted">No matching sessions.</p>
+        : <ul className="session-list">{filteredSessions.map(session =>
           <li key={session.id}><button className="quiet" disabled={busy}
             aria-pressed={selected === session.id} onClick={() => select(session.id)}>
             <span>{session.id.slice(0, 10)}</span><small>{session.turns} turns</small>
@@ -156,26 +173,34 @@ export function Playground({ token, email, onExpired, onInspect }: { token: stri
     <section className="card conversation" aria-labelledby="conversation-heading">
       <div className="section-heading">
         <h2 id="conversation-heading">{selected ? 'Conversation' : 'New conversation'}</h2>
-        <button className="quiet" disabled={busy} onClick={() => setRevision(value => value + 1)}>Refresh history</button>
+        <div className="button-row">
+          <button className="quiet" disabled={busy} onClick={() => setRevision(value => value + 1)}>Refresh history</button>
+          <button className="quiet" aria-expanded={showInspector} aria-controls="run-inspector"
+            onClick={() => setShowInspector(value => !value)}>{showInspector ? 'Hide inspector' : 'Show inspector'}</button>
+        </div>
       </div>
       {historyError && <p className="error" role="alert">{historyError}</p>}
       {selected && !history && !historyError && <p className="muted">Loading history…</p>}
+      {!selected && !prompt && <div className="prompt-starters">
+        <p className="eyebrow">START WITH A QUESTION</p>
+        {['Can I query the first field of a compound index by itself?', 'Explain how MongoDB change streams resume.',
+          'How do I group documents in an aggregation pipeline?'].map(example =>
+          <button key={example} className="quiet" onClick={() => setMessage(example)}>{example}</button>)}
+      </div>}
       {recent.map(turn => <article className="turn" key={turn.execution_id}>
         <p className="question">{turn.question ?? 'Question unavailable in trace'}</p>
         <p>{turn.answer ?? 'This run ended without a recorded answer.'}</p>
         <Citations items={turn.citations} />
-        <button className="quiet" onClick={() => onInspect(turn.execution_id)}>Replay run</button>
+        <div className="button-row">
+          <button className="quiet" onClick={() => onInspect(turn.execution_id)}>Replay run</button>
+          {turn.answer && <button className="quiet" onClick={() => void copyAnswer(turn.answer ?? "")}>Copy answer</button>}
+        </div>
       </article>)}
       {!alreadyRecorded && prompt && <article className="turn">
         <p className="question">{prompt}</p>
         {result && <><p>{result.answer}</p><Citations items={result.citations} /></>}
       </article>}
-      {trace.length > 0 && <details className="citations"><summary>Execution progress · {trace.length} events</summary>
-        <ol>{trace.map(item => <li key={item.seq}>{item.seq}. {item.type}{item.node ? ` · ${item.node}` : ''}</li>)}</ol>
-      </details>}
-      {result && <p className="muted wrap">Run {result.execution_id} · {result.outcome.replaceAll('_', ' ')}
-        {!result.fully_recorded && ' · trace incomplete'} {' '}
-        {!alreadyRecorded && <button className="quiet" onClick={() => onInspect(result.execution_id)}>Replay run</button>}</p>}
+      {copyStatus && <p className="muted" role="status">{copyStatus}</p>}
       {error && <p className="error" role="alert">{error}</p>}
       {activity && <p className="muted" role="status">{activity}</p>}
       <form className="composer" onSubmit={send}>
@@ -189,5 +214,20 @@ export function Playground({ token, email, onExpired, onInspect }: { token: stri
         </div>
       </form>
     </section>
+    <aside className="card inspector" id="run-inspector" hidden={!showInspector} aria-labelledby="inspector-title">
+      <p className="eyebrow">RUN METADATA</p><h2 id="inspector-title">Execution inspector</h2>
+      {!trace.length && !result && <p className="muted">Send a question to follow its recorded events.</p>}
+      {trace.length > 0 && <ol className="inspector-events">{trace.map(item =>
+        <li key={item.seq}><span>{item.seq}</span><div>{item.type}<small>{item.node}</small></div></li>)}</ol>}
+      {result && <>
+        <p className="muted wrap">Run {result.execution_id} · {result.outcome.replaceAll('_', ' ')}
+          {!result.fully_recorded && ' · trace incomplete'}</p>
+        <Citations items={result.citations} />
+        {!alreadyRecorded && <div className="button-row">
+          <button className="quiet" onClick={() => onInspect(result.execution_id)}>Replay run</button>
+          <button className="quiet" onClick={() => void copyAnswer(result.answer)}>Copy answer</button>
+        </div>}
+      </>}
+    </aside>
   </div>
 }

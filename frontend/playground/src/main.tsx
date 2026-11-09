@@ -6,12 +6,15 @@ import { DatabaseExplorer } from './DatabaseExplorer'
 import { MentorView } from './MentorView'
 import { MemoryStudio } from './MemoryStudio'
 import { ExecutionReplay } from './ExecutionReplay'
+import { PlatformDashboard, PlatformHome } from './PlatformHome'
 import { Playground } from './Playground'
 import { ResourcesView } from './ResourcesView'
 import './style.css'
 
-type View = 'playground' | 'executions' | 'memory' | 'explorer' | 'analytics' | 'mentor' | 'resources'
+type View = 'home' | 'dashboard' | 'playground' | 'executions' | 'memory' | 'explorer' | 'analytics' | 'mentor' | 'resources'
 const VIEWS: { id: View; label: string; intro: string }[] = [
+  { id: 'home', label: 'Overview', intro: '' },
+  { id: 'dashboard', label: 'Dashboard', intro: 'Review your latest runs and recorded activity.' },
   { id: 'playground', label: 'Agent Playground', intro: 'Ask about MongoDB, follow the execution, and check the evidence behind the answer.' },
   { id: 'executions', label: 'Execution Replay', intro: 'Inspect the events recorded during your saved agent runs.' },
   { id: 'memory', label: 'Memory Studio', intro: 'Manage the notes you can opt to share with the agent.' },
@@ -74,11 +77,11 @@ function App() {
   const [healthCheck, setHealthCheck] = useState(0)
   const [account, setAccount] = useState<Account>()
   const [notice, setNotice] = useState('')
-  const [view, setView] = useState<View>('playground')
+  const [view, setView] = useState<View>('home')
   const [execution, setExecution] = useState<string>()
   const [mentorSession, setMentorSession] = useState<string>()
   const [mentorExecution, setMentorExecution] = useState<string>()
-  const visibleView = account || view === 'resources' ? view : 'playground'
+  const visibleView = account || ['home', 'resources', 'playground'].includes(view) ? view : 'playground'
   const activeView = VIEWS.find(item => item.id === visibleView)!
   const showExecution = (id: string) => { setExecution(id); setView('executions') }
   useEffect(() => {
@@ -102,16 +105,17 @@ function App() {
 
   return <>
     <header className="topbar">
-      <a className="brand" href="#main">MongoDB <span>AI Agents</span></a>
+      <button className="brand" onClick={() => setView('home')}>MongoDB <span>AI Agents</span></button>
       <div className="top-actions">
         <span className="badge" role="status">{badge}</span>
         {account && <button className="quiet" onClick={() => setAccount(undefined)}>Sign out</button>}
       </div>
     </header>
     <main id="main" className="shell">
+      {visibleView !== 'home' && <>
       <p className="eyebrow">MONGODB AI AGENTS / WORKSPACE</p>
       <h1>{activeView.label}</h1>
-      <p className="intro">{activeView.intro}</p>
+      <p className="intro">{activeView.intro}</p></>}
       {healthFailed && <p className="notice" role="alert">The backend is unavailable. <button className="quiet" onClick={() => {
         setHealthFailed(false)
         setHealthCheck(healthCheck + 1)
@@ -120,12 +124,16 @@ function App() {
       {authUnavailable && <p className="notice" role="status">Account access is unavailable in this configuration. The existing backend page still offers the demo lessons and quiz.</p>}
       {notice && <p className="notice" role="status">{notice}</p>}
       <nav className="workspace-nav" aria-label="Workspace">
-        {VIEWS.filter(item => account || item.id === 'playground' || item.id === 'resources')
+        {VIEWS.filter(item => account || ['home', 'playground', 'resources'].includes(item.id))
           .map(item => <button className="quiet" key={item.id} aria-current={visibleView === item.id ? 'page' : undefined}
             onClick={() => setView(item.id)}>{item.label}</button>)}
       </nav>
+      {visibleView === 'home' && <PlatformHome onOpen={() => setView(account ? 'dashboard' : 'playground')}
+        onResources={() => setView('resources')} />}
       {visibleView === 'resources' && <ResourcesView />}
       {account ? <>
+        {view === 'dashboard' && <PlatformDashboard token={account.token} onExpired={expire}
+          onOpen={() => setView('playground')} onReplay={showExecution} />}
         <div hidden={view !== 'playground'}>
           <Playground token={account.token} email={account.user.email} onExpired={expire} onInspect={showExecution} />
         </div>
@@ -142,7 +150,7 @@ function App() {
       </>
         : visibleView === 'playground' && <AuthForm disabled={Boolean(authUnavailable || healthFailed)} onSignIn={value => {
           setNotice('')
-          setView('playground')
+          setView('dashboard')
           setExecution(undefined)
           setMentorSession(undefined)
           setMentorExecution(undefined)
