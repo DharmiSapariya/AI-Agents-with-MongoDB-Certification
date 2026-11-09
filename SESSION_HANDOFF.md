@@ -125,3 +125,10 @@ graph and its separate owned state.
 
 Final local checks: 283 passed, 1 skipped, Ruff and Mypy clean. The skipped
 test needs `TEST_MONGODB_URI`. No real MongoDB restart was verified here.
+
+## Session 11 — item 16
+
+Published Session 10 ends at `bad8b16`. Mentor now has a separate,
+deterministic LangGraph and owned sessions, results, and event storage.
+Teach, watch, and step work without an LLM provider. Trace modes read
+a bounded, allowlisted view of owned primary executions.

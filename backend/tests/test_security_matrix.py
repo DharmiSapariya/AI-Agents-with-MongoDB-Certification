@@ -25,6 +25,7 @@ ROUTES = (
     ("GET", "/api/auth/me", "/api/auth/me", None, "auth", 200),
     ("GET", "/api/mentor/teach/{concept}", "/api/mentor/teach/agent", None, "public", 200),
     ("GET", "/api/mentor/quiz", "/api/mentor/quiz", None, "public", 200),
+    ("POST", "/api/mentor/run", "/api/mentor/run", {"mode": "teach", "concept": "agent"}, "auth", 200),
     ("POST", "/api/mentor/quiz", "/api/mentor/quiz", {"answers": {}}, "mode-dependent", 200),
     ("POST", "/api/chat", "/api/chat", {"message": "hello", "session_id": "s_alice"}, "owner", 200),
     ("POST", "/api/chat/stream", "/api/chat/stream",
@@ -49,6 +50,7 @@ def test_each_registered_http_method_has_an_explicit_policy():
     expected = {(method, path) for method, path, *_ in ROUTES}
     expected |= {("HEAD", path) for path in framework_paths}
     expected.add(("DELETE", "/api/memory/{memory_id}"))  # exercised in test_memory.py
+    expected.add(("GET", "/api/mentor/sessions/{session_id}"))  # exercised in test_mentor_graph.py
     assert registered == expected
 
 

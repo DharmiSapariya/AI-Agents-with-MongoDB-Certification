@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from . import auth, memory, mentor, sessions
+from . import auth, memory, mentor, mentor_graph, sessions
 from .chat_stream import stream_turn
 from .config import settings
 from .deps import db_provider
@@ -176,6 +176,39 @@ def execution(execution_id: str, user: LiveUser, get_db=Depends(db_provider)):
 @router.get("/mentor/explain/{execution_id}")
 def mentor_explain(execution_id: str, user: LiveUser, get_db=Depends(db_provider)):
     return mentor.explain_execution(owned_events(get_db(), user["_id"], execution_id))
+
+
+@router.post("/mentor/run")
+def mentor_run(body: mentor_graph.MentorIn, user: auth.CurrentUser, get_db=Depends(db_provider)):
+    database = get_db()
+    state: mentor_graph.MentorState = {"mode": body.mode, "after_seq": body.after_seq}
+    if body.mode == "teach":
+        lesson = mentor.teach(body.concept or "")
+        if lesson is None:
+            raise HTTPException(404, "Concept not found.")
+        state["lesson"] = lesson
+    else:
+        execution_id = body.execution_id or ""
+        _check_id(execution_id)
+        query = {"execution_id": execution_id, "user_id": user["_id"],
+                 "agent": {"$in": ["primary", None]}}
+        if body.mode == "step":
+            query["seq"] = {"$gt": body.after_seq}
+        events = list(database["agent_execution_events"].find(query).sort("seq", 1)
+                      .limit(2 if body.mode == "step" else 101))
+        if not events:
+            query.pop("seq", None)
+            if database["agent_execution_events"].find_one(query, {"_id": 1}) is None:
+                raise ExecutionNotFound()
+        state["events"] = [mentor_graph.safe_event(event) for event in events]
+    return mentor_graph.run(database, user["_id"], body, state)
+
+
+@router.get("/mentor/sessions/{session_id}")
+def mentor_history(session_id: str, user: auth.CurrentUser, limit: int = Query(20, ge=1, le=50),
+                   skip: int = Query(0, ge=0, le=1000), get_db=Depends(db_provider)):
+    _check_id(session_id)
+    return mentor_graph.history(get_db(), user["_id"], session_id, limit, skip)
 
 
 @router.post("/mentor/quiz")

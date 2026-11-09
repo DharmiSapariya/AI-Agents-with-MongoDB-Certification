@@ -25,7 +25,7 @@ Live-Atlas items stay "pending live verification" until run against a real clust
 15. test: restart-survival test (implemented, real MongoDB verification pending)
 
 ## Phase E/G: mentor and observability
-16. feat(mentor): independent graph, routes, sessions, tracing
+16. feat(mentor): independent graph, routes, sessions, tracing (implemented, session 11)
 17. feat(mentor): teach, watch, step-through, quiz, challenge; progress persistence
 18. feat(observability): user ids on events, full tool results with caps, analytics endpoints
 

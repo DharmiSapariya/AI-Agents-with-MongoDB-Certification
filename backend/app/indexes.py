@@ -16,6 +16,8 @@ def ensure_indexes(database) -> list[str]:
         database["agent_execution_events"].create_index([("user_id", ASCENDING), ("type", ASCENDING), ("ts", DESCENDING)]),
         database["agent_execution_events"].create_index(
             [("user_id", ASCENDING), ("thread_id", ASCENDING), ("type", ASCENDING), ("ts", DESCENDING), ("_id", DESCENDING)]),
+        database["mentor_runs"].create_index(
+            [("user_id", ASCENDING), ("session_id", ASCENDING), ("created_at", DESCENDING), ("_id", DESCENDING)]),
         database["user_memories"].create_index([("user_id", ASCENDING), ("created_at", DESCENDING), ("_id", DESCENDING)]),
         database["sessions"].create_index([("user_id", ASCENDING), ("updated_at", DESCENDING)]),
         database["quiz_attempts"].create_index([("user_id", ASCENDING)]),
