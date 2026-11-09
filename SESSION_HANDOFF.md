@@ -202,3 +202,22 @@ React app passed a simulated DOM smoke test against local FastAPI using
 mongomock and a scripted graph. It exercised replay controls, note
 deletion, collection samples, and analytics. Real-browser visual checks
 and live MongoDB verification remain pending.
+
+## Session 14 — items 24–25
+
+Built on published Session 13 at `a854eb9`. The React Learning Center
+covers teach, watch, step, quiz, challenge, persisted progress, and Mentor
+session history. Project Resources is public and links to documentation
+and the official credential. It imports evaluator JSON client-side and
+ships no benchmark scores.
+
+Six frontend tests and the production build passed. The built React app
+passed a simulated DOM smoke test against local FastAPI with mongomock
+and a scripted primary graph. It covered report import, the Replay to
+Mentor link, all five activities, and progress. Real browser visual checks
+and live-provider verification remain pending.
+
+Next: Session 15, items 26–27. Build the reproducible benchmark runner and
+stored run format, then harden Docker and wire frontend checks into CI.
+Start with `scripts/evaluate_retrieval.py`, `benchmarks/retrieval`,
+`deployment/`, and `.github/workflows/ci.yml`.

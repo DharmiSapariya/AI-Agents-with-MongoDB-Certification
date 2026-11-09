@@ -7,9 +7,10 @@ import { MentorView } from './MentorView'
 import { MemoryStudio } from './MemoryStudio'
 import { ExecutionReplay } from './ExecutionReplay'
 import { Playground } from './Playground'
+import { ResourcesView } from './ResourcesView'
 import './style.css'
 
-type View = 'playground' | 'executions' | 'memory' | 'explorer' | 'analytics' | 'mentor'
+type View = 'playground' | 'executions' | 'memory' | 'explorer' | 'analytics' | 'mentor' | 'resources'
 const VIEWS: { id: View; label: string; intro: string }[] = [
   { id: 'playground', label: 'Agent Playground', intro: 'Ask about MongoDB, follow the execution, and check the evidence behind the answer.' },
   { id: 'executions', label: 'Execution Replay', intro: 'Inspect the events recorded during your saved agent runs.' },
@@ -17,6 +18,7 @@ const VIEWS: { id: View; label: string; intro: string }[] = [
   { id: 'explorer', label: 'MongoDB Explorer', intro: 'Browse the collection samples available to your account.' },
   { id: 'analytics', label: 'Analytics', intro: 'Review latency, outcomes, and provider usage from recorded runs.' },
   { id: 'mentor', label: 'Mentor Learning Center', intro: 'Learn from lessons, challenges, and your recorded executions.' },
+  { id: 'resources', label: 'Project Resources', intro: 'Find setup guidance, the official credential, and retrieval evaluation reports.' },
 ]
 
 type Account = { user: User; token: string; expiresAt: number }
@@ -76,7 +78,8 @@ function App() {
   const [execution, setExecution] = useState<string>()
   const [mentorSession, setMentorSession] = useState<string>()
   const [mentorExecution, setMentorExecution] = useState<string>()
-  const activeView = VIEWS.find(item => item.id === (account ? view : 'playground'))!
+  const visibleView = account || view === 'resources' ? view : 'playground'
+  const activeView = VIEWS.find(item => item.id === visibleView)!
   const showExecution = (id: string) => { setExecution(id); setView('executions') }
   useEffect(() => {
     const controller = new AbortController()
@@ -116,11 +119,13 @@ function App() {
       {status?.status === 'degraded' && <p className="notice" role="status">The backend is running but MongoDB is unavailable.</p>}
       {authUnavailable && <p className="notice" role="status">Account access is unavailable in this configuration. The existing backend page still offers the demo lessons and quiz.</p>}
       {notice && <p className="notice" role="status">{notice}</p>}
-      {account ? <>
-        <nav className="workspace-nav" aria-label="Workspace">
-          {VIEWS.map(item => <button className="quiet" key={item.id} aria-current={view === item.id ? 'page' : undefined}
+      <nav className="workspace-nav" aria-label="Workspace">
+        {VIEWS.filter(item => account || item.id === 'playground' || item.id === 'resources')
+          .map(item => <button className="quiet" key={item.id} aria-current={visibleView === item.id ? 'page' : undefined}
             onClick={() => setView(item.id)}>{item.label}</button>)}
-        </nav>
+      </nav>
+      {visibleView === 'resources' && <ResourcesView />}
+      {account ? <>
         <div hidden={view !== 'playground'}>
           <Playground token={account.token} email={account.user.email} onExpired={expire} onInspect={showExecution} />
         </div>
@@ -135,7 +140,7 @@ function App() {
         {view === 'mentor' && <MentorView token={account.token} onExpired={expire}
           session={mentorSession} onSession={setMentorSession} initialExecution={mentorExecution} />}
       </>
-        : <AuthForm disabled={Boolean(authUnavailable || healthFailed)} onSignIn={value => {
+        : visibleView === 'playground' && <AuthForm disabled={Boolean(authUnavailable || healthFailed)} onSignIn={value => {
           setNotice('')
           setView('playground')
           setExecution(undefined)

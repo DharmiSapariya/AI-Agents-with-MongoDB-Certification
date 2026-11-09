@@ -187,3 +187,13 @@ screens were added in Session 13.
 | Memory Studio | Lists, saves and deletes owned personalization notes. Deletion requires an explicit second action. |
 | MongoDB Explorer | Lists API-allowed collections and paginated record samples, distinguishing owned data from shared catalog data. |
 | Analytics | Shows recorded execution, latency, tool and usage aggregates across selectable time windows. Missing provider usage remains unavailable. |
+
+## React learning and project resources (items 24–25)
+
+The Learning Center exposes all five Mentor activities, session activity,
+and persisted progress. Execution Replay links to Mentor with the owned
+run ID prefilled. Public Project Resources links to the existing README,
+architecture, curriculum and Credly credential and accepts local JSON
+from the retrieval evaluator. Report import validates the expected shape
+and shows the declared run mode. No live results are bundled or verified
+by the viewer.

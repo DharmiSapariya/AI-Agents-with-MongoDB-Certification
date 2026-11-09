@@ -74,3 +74,7 @@ input, textarea { color: inherit; background: #101913; border: 1px solid var(--l
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: .55rem; text-align: left; border-bottom: 1px solid var(--line); }
 .composer select { font: inherit; color: inherit; background: #101913; border: 1px solid var(--line); border-radius: .5rem; padding: .65rem; min-width: 0; }
+.resource-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.benchmark { grid-column: 1 / -1; }
+.benchmark input { max-width: 100%; }
+@media (max-width: 720px) { .resource-grid { grid-template-columns: 1fr; } }

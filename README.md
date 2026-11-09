@@ -61,7 +61,8 @@ This project builds on the official **MongoDB Skill badge: AI Agents with MongoD
 | Accounts and access tokens (`/api/auth/register`, `/login`, `/me`) | VERIFIED LOCALLY against mongomock (151 tests); not run against Atlas |
 | Per-user sessions, traces and explorer scoping | VERIFIED LOCALLY against mongomock (174 tests); not run against Atlas. Chat, sessions, executions, Mentor explain and the explorer require a token and only return the caller's records |
 | Rate limits and request size caps | VERIFIED LOCALLY: 238 tests with a fake clock, plus a real uvicorn run in demo mode (200, 429, 413). Counters are per process; not tested behind a proxy, with several workers, or against Atlas |
-| Long-term memory, SSE live updates, observability dashboard, DB explorer UI, benchmarks, step-through playback, learning-center modules, React frontend | NOT IMPLEMENTED |
+| React workspace, memory, execution streaming, analytics and Mentor | Implemented and exercised locally with a scripted graph and mongomock. Real-provider and browser visual verification are pending. |
+| Retrieval evaluation | CLI and local report import implemented. No live benchmark scores are bundled. |
 | Direct dependencies pinned; CI runs ruff, mypy and pytest | Pinned versions install cleanly and pass locally; CI has not been observed running on GitHub; no lockfile for transitive packages |
 | Startup settings validation, JSON logging, request IDs, MongoDB lifecycle, health states, standard error responses | IMPLEMENTED; covered by mocked tests (fake clients, mongomock), not run against Atlas |
 
@@ -317,3 +318,17 @@ After signing in, use the workspace navigation to open **Execution Replay**,
 events in their recorded order at a fixed pace. The Explorer shows API-selected
 samples, and Analytics reports stored events from your account. You can also
 open a saved execution from its chat turn with **Replay run**.
+
+
+Open **Mentor Learning Center** to run lessons, quiz and challenge
+activities, or explain an owned primary execution. **Open in Mentor** on
+the replay screen fills in the execution ID. Progress is stored by account.
+The Mentor activity history lists the latest ten runs in the selected
+Mentor session. Keep its displayed session ID if you want to resume after
+a page reload.
+
+**Project Resources** is available before sign-in. It links to setup,
+architecture, curriculum, and the official credential. To inspect an
+evaluation, import the JSON produced by `scripts/evaluate_retrieval.py`.
+The file stays in the browser tab. Its run mode is shown as declared by
+the file, and the app ships no measured results.
