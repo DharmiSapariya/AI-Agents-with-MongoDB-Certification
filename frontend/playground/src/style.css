@@ -117,3 +117,39 @@ th, td { padding: .55rem; text-align: left; border-bottom: 1px solid var(--line)
 @media (min-width: 1100px) {
   .chat-layout.with-inspector { grid-template-columns: minmax(11rem, 14rem) minmax(0, 1fr) minmax(13rem, 16rem); }
 }
+
+.signed-in-shell { width: min(100% - 2rem, 100rem); margin: 1.25rem auto 3rem; display: grid; grid-template-columns: minmax(10rem, 13rem) minmax(0, 1fr); gap: clamp(1rem, 2vw, 2.2rem); align-items: start; }
+.signed-in-shell > .shell { margin: 0; width: 100%; min-width: 0; }
+.signed-in-shell > .shell > h1 { font-size: clamp(2rem, 4vw, 3.25rem); }
+.workspace-rail { position: sticky; top: 1rem; padding: .8rem; border: 1px solid var(--line); border-radius: .8rem; background: var(--surface); }
+.workspace-rail nav:not([hidden]) { display: grid; gap: .85rem; margin-top: .8rem; }
+.workspace-rail section { display: grid; gap: .15rem; }
+.workspace-rail section .eyebrow { margin: .25rem 0; }
+.workspace-rail button { text-align: left; }
+.workspace-rail section button { border-color: transparent; }
+.workspace-rail [aria-current="page"] { background: #203a2c; border-color: #355341; }
+.rail-search { font-size: .8rem; color: var(--muted); }
+.rail-search input { width: 100%; }
+@media (max-width: 850px) {
+  .signed-in-shell { grid-template-columns: minmax(0, 1fr); }
+  .workspace-rail { position: static; }
+  .workspace-rail section { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; }
+  .workspace-rail section .eyebrow { flex-basis: 100%; }
+}
+
+.panel-filters { display: flex; flex-wrap: wrap; gap: .6rem; margin: .8rem 0; }
+.panel-filters label { min-width: 0; font-size: .8rem; color: var(--muted); }
+.panel-filters input, .panel-filters select { width: 100%; }
+.panel-filters select { color: inherit; font: inherit; background: #101913; border: 1px solid var(--line); border-radius: .5rem; padding: .6rem; }
+.replay-progress progress { width: 100%; accent-color: var(--mint); }
+.timeline-list { max-height: 21rem; overflow: auto; }
+.session-list span > small { display: block; margin-top: .2rem; color: var(--muted); }
+.document-fields { border-left: 1px solid var(--line); padding-left: .8rem; }
+.document-fields small { display: inline; margin-left: .35rem; }
+.mentor-layout > aside { border-top: 2px solid #80bcaa; }
+.mentor-layout > section { border-top: 2px solid var(--mint); }
+.topic-list { display: grid; gap: .3rem; margin-top: .65rem; }
+.topic-list button { text-align: left; font-size: .8rem; }
+.topic-list [aria-pressed="true"] { background: #244434; }
+.comparison-panel { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.comparison-panel h3 { margin-top: 0; }

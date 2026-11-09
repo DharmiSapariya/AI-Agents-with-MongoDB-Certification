@@ -8,6 +8,7 @@ export function MemoryStudio(access: Access) {
   const [skip, setSkip] = useState(0)
   const notes = useResource<Note[]>(`/api/memory?limit=11&skip=${skip}`, access)
   const [text, setText] = useState('')
+  const [filter, setFilter] = useState('')
   const [confirm, setConfirm] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -39,6 +40,7 @@ export function MemoryStudio(access: Access) {
     })
   }
 
+  const visible = notes.data?.slice(0, 10).filter(note => note.text.toLowerCase().includes(filter.trim().toLowerCase())) ?? []
   return <div className="workspace">
     <section className="card">
       <h2>Save a note</h2>
@@ -53,10 +55,13 @@ export function MemoryStudio(access: Access) {
     </section>
     <section className="card">
       <h2>Your saved notes</h2>
+      <div className="panel-filters"><label>Search this page<input type="search" value={filter}
+        onChange={event => setFilter(event.target.value)} /></label></div>
       {notes.error ? <p className="error" role="alert">{notes.error}</p> : !notes.data ? <p>Loading notes…</p>
         : !notes.data.length ? <p className="muted">No notes on this page.</p>
-        : notes.data.slice(0, 10).map(note => <article className="turn" key={note.id}>
-          <p>{note.text}</p><p className="muted">{new Date(note.created_at).toLocaleString()}</p>
+        : !visible.length ? <p className="muted">No notes match this search.</p>
+        : visible.map(note => <article className="turn" key={note.id}>
+          <p className="eyebrow">ACCOUNT NOTE</p><p>{note.text}</p><p className="muted">{new Date(note.created_at).toLocaleString()}</p>
           {confirm === note.id ? <div className="button-row">
             <button className="quiet" disabled={busy} onClick={() => {
               void change(`/api/memory/${encodeURIComponent(note.id)}`, { method: 'DELETE' }, () => {

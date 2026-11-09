@@ -9,10 +9,10 @@ import { ExecutionReplay } from './ExecutionReplay'
 import { PlatformDashboard, PlatformHome } from './PlatformHome'
 import { Playground } from './Playground'
 import { ResourcesView } from './ResourcesView'
+import { WorkspaceNavigation, type View, type ViewItem } from './WorkspaceNavigation'
 import './style.css'
 
-type View = 'home' | 'dashboard' | 'playground' | 'executions' | 'memory' | 'explorer' | 'analytics' | 'mentor' | 'resources'
-const VIEWS: { id: View; label: string; intro: string }[] = [
+const VIEWS: ViewItem[] = [
   { id: 'home', label: 'Overview', intro: '' },
   { id: 'dashboard', label: 'Dashboard', intro: 'Review your latest runs and recorded activity.' },
   { id: 'playground', label: 'Agent Playground', intro: 'Ask about MongoDB, follow the execution, and check the evidence behind the answer.' },
@@ -111,9 +111,11 @@ function App() {
         {account && <button className="quiet" onClick={() => setAccount(undefined)}>Sign out</button>}
       </div>
     </header>
+    <div className={account ? 'signed-in-shell' : undefined}>
+    {account && <WorkspaceNavigation items={VIEWS} current={visibleView} navigate={setView} />}
     <main id="main" className="shell">
       {visibleView !== 'home' && <>
-      <p className="eyebrow">MONGODB AI AGENTS / WORKSPACE</p>
+      <p className="eyebrow">MONGODB AI AGENTS / {activeView.label.toUpperCase()}</p>
       <h1>{activeView.label}</h1>
       <p className="intro">{activeView.intro}</p></>}
       {healthFailed && <p className="notice" role="alert">The backend is unavailable. <button className="quiet" onClick={() => {
@@ -123,11 +125,11 @@ function App() {
       {status?.status === 'degraded' && <p className="notice" role="status">The backend is running but MongoDB is unavailable.</p>}
       {authUnavailable && <p className="notice" role="status">Account access is unavailable in this configuration. The existing backend page still offers the demo lessons and quiz.</p>}
       {notice && <p className="notice" role="status">{notice}</p>}
-      <nav className="workspace-nav" aria-label="Workspace">
+      {!account && <nav className="workspace-nav" aria-label="Workspace">
         {VIEWS.filter(item => account || ['home', 'playground', 'resources'].includes(item.id))
           .map(item => <button className="quiet" key={item.id} aria-current={visibleView === item.id ? 'page' : undefined}
             onClick={() => setView(item.id)}>{item.label}</button>)}
-      </nav>
+      </nav>}
       {visibleView === 'home' && <PlatformHome onOpen={() => setView(account ? 'dashboard' : 'playground')}
         onResources={() => setView('resources')} />}
       {visibleView === 'resources' && <ResourcesView />}
@@ -157,6 +159,7 @@ function App() {
           setAccount(value)
         }} />}
     </main>
+    </div>
   </>
 }
 

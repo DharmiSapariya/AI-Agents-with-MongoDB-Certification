@@ -3,7 +3,7 @@ import { type Access, useResource } from './resources'
 
 type Event = {
   execution_id: string; seq: number; type: string; node: string | null; ts: string
-  data: { status?: string; outcome?: string; duration_ms?: number; fully_recorded?: boolean; tool?: string }
+  data: { [key: string]: unknown; status?: string; outcome?: string; duration_ms?: number; fully_recorded?: boolean; tool?: string }
 }
 const PAGE_SIZE = 10
 
@@ -31,7 +31,9 @@ function Timeline({ events }: { events: Event[] }) {
       <button className="quiet" disabled={index >= last} onClick={() => setPlaying(!playing)}>{playing ? 'Pause' : 'Play'}</button>
       <button className="quiet" disabled={index >= last} onClick={() => { setPlaying(false); setCursor(index + 1) }}>Next</button>
     </div>
-    <p role="status">Event {index + 1} of {events.length}</p>
+    <div className="replay-progress"><p role="status">Event {index + 1} of {events.length}</p>
+      <progress aria-label="Playback progress" value={index + 1} max={events.length} />
+    </div>
     <dl className="event-detail">
       <dt>Event</dt><dd>{event.type}</dd>
       <dt>Node</dt><dd>{event.node ?? 'Unavailable'}</dd>
@@ -40,7 +42,12 @@ function Timeline({ events }: { events: Event[] }) {
       {event.data.tool && <><dt>Tool</dt><dd>{event.data.tool}</dd></>}
       {event.data.duration_ms != null && <><dt>Duration</dt><dd>{event.data.duration_ms} ms</dd></>}
     </dl>
-    <ol className="session-list">{events.map((item, i) => <li key={item.seq}>
+    <details className="citations" key={event.seq}>
+      <summary>Recorded event data</summary>
+      {Object.keys(event.data).length ? <pre className="record">{JSON.stringify(event.data, null, 2)}</pre>
+        : <p className="muted">No additional data was recorded.</p>}
+    </details>
+    <ol className="session-list timeline-list">{events.map((item, i) => <li key={item.seq}>
       <button className="quiet" aria-current={i === index ? 'step' : undefined}
         onClick={() => { setPlaying(false); setCursor(i) }}>
         <span>{item.seq}. {item.type}</span><small>{item.node}</small>
@@ -53,22 +60,38 @@ export function ExecutionReplay({ selected, onSelect, onMentor, ...access }: Acc
   selected?: string; onSelect: (id: string) => void; onMentor: (id: string) => void
 }) {
   const [skip, setSkip] = useState(0)
+  const [query, setQuery] = useState('')
+  const [outcome, setOutcome] = useState('all')
   const runs = useResource<Event[]>(`/api/executions?limit=${PAGE_SIZE + 1}&skip=${skip}`, access)
   const trace = useResource<Event[]>(selected ? `/api/executions/${encodeURIComponent(selected)}` : null, access)
-  return <div className="workspace">
+  const page = runs.data?.slice(0, PAGE_SIZE) ?? []
+  const statusOf = (run: Event) => run.data.outcome ?? run.data.status ?? 'Recorded'
+  const options = [...new Set(page.map(statusOf))]
+  const filtered = page.filter(run => run.execution_id.toLowerCase().includes(query.trim().toLowerCase()) &&
+    (outcome === 'all' || outcome === statusOf(run)))
+  return <div className="workspace observability-layout">
     <section className="card">
       <h2>Recorded runs</h2>
+      <div className="panel-filters">
+        <label>Run ID<input type="search" value={query} onChange={event => setQuery(event.target.value)} /></label>
+        <label>Outcome<select value={outcome} onChange={event => setOutcome(event.target.value)}>
+          <option value="all">All outcomes</option>
+          {options.map(option => <option value={option} key={option}>{option.replaceAll('_', ' ')}</option>)}
+        </select></label>
+      </div>
+      <p className="muted">Filters apply to this page.</p>
       {runs.error ? <p className="error" role="alert">{runs.error}</p> : !runs.data ? <p>Loading runs…</p>
         : runs.data.length === 0 ? <p className="muted">No runs on this page.</p>
-        : <ul className="session-list">{runs.data.slice(0, PAGE_SIZE).map(run => <li key={run.execution_id}>
+        : !filtered.length ? <p className="muted">No matching runs on this page.</p>
+        : <ul className="session-list">{filtered.map(run => <li key={run.execution_id}>
           <button className="quiet" aria-pressed={selected === run.execution_id} onClick={() => onSelect(run.execution_id)}>
-            <span>{run.execution_id.slice(0, 10)}</span><small>{run.data.outcome ?? run.data.status ?? 'Recorded'}</small>
+            <span>{run.execution_id.slice(0, 10)}<small>{new Date(run.ts).toLocaleString()}</small></span><small>{statusOf(run)}</small>
           </button>
         </li>)}</ul>}
       <div className="button-row">
-        <button className="quiet" disabled={skip === 0} onClick={() => setSkip(skip - PAGE_SIZE)}>Previous page</button>
+        <button className="quiet" disabled={skip === 0} onClick={() => { setSkip(skip - PAGE_SIZE); setOutcome('all') }}>Previous page</button>
         <button className="quiet" disabled={(runs.data?.length ?? 0) <= PAGE_SIZE || skip >= 1000}
-          onClick={() => setSkip(skip + PAGE_SIZE)}>Next page</button>
+          onClick={() => { setSkip(skip + PAGE_SIZE); setOutcome('all') }}>Next page</button>
         <button className="quiet" onClick={runs.reload}>Refresh</button>
       </div>
     </section>
