@@ -44,6 +44,16 @@ class Settings(BaseSettings):
     jwt_audience: str = Field("mongodb-ai-agent-platform-api", min_length=1)
     access_token_ttl_minutes: int = Field(30, ge=1, le=1440)
     auth_max_concurrent_hashes: int = Field(4, ge=1, le=32)
+    rate_limit_enabled: bool = True
+    rate_register_ip_per_hour: int = Field(10, ge=1, le=100000)
+    rate_login_ip_per_min: int = Field(10, ge=1, le=100000)
+    rate_chat_ip_per_min: int = Field(30, ge=1, le=100000)
+    rate_chat_user_per_min: int = Field(10, ge=1, le=100000)
+    rate_read_ip_per_min: int = Field(120, ge=1, le=100000)
+    rate_limit_max_keys: int = Field(10000, ge=100, le=1000000)
+    max_body_bytes: int = Field(32768, ge=1024, le=1048576)
+    max_auth_body_bytes: int = Field(4096, ge=256, le=65536)
+    log_rejection_interval_s: float = Field(10, ge=1, le=3600)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     log_redact_patterns: list[str] = []
 
@@ -79,6 +89,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _check_live_requirements(self):
+        if self.max_auth_body_bytes > self.max_body_bytes:
+            raise ValueError("MAX_AUTH_BODY_BYTES must not exceed MAX_BODY_BYTES")
         known = KNOWN_EMBEDDING_DIMS.get(self.embedding_model)
         if known and self.embedding_dims not in known:
             raise ValueError(f"EMBEDDING_DIMS does not match EMBEDDING_MODEL (expected one of {sorted(known)})")

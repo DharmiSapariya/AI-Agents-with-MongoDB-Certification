@@ -7,6 +7,8 @@ import json
 import logging
 import re
 import sys
+import threading
+import time
 import traceback
 from datetime import datetime, timezone
 from typing import Any
@@ -48,6 +50,52 @@ class JsonFormatter(logging.Formatter):
 def log(logger: logging.Logger, level: int, event: str, **fields: Any) -> None:
     """Emit a structured event; fields become top-level keys in the JSON line."""
     logger.log(level, event, extra={"fields": fields})
+
+
+class EventThrottle:
+    """Allow one log line per key per interval; the next allowed line reports how many were skipped."""
+
+    def __init__(self, interval_s: float, clock=time.monotonic, max_keys: int = 256):
+        self.interval_s = interval_s
+        self._clock = clock
+        self._max_keys = max_keys
+        self._lock = threading.Lock()
+        self._last: dict[str, float] = {}
+        self._skipped: dict[str, int] = {}
+
+    def allow(self, key: str) -> int | None:
+        """None means suppress; otherwise the number of lines suppressed since the last one."""
+        now = self._clock()
+        with self._lock:
+            last = self._last.get(key)
+            if last is not None and now - last < self.interval_s:
+                self._skipped[key] = self._skipped.get(key, 0) + 1
+                return None
+            if last is None and len(self._last) >= self._max_keys:
+                return None  # category names are fixed in code, so this is a safety bound only
+            self._last[key] = now
+            return self._skipped.pop(key, 0)
+
+
+_throttle = EventThrottle(10)
+
+
+def set_throttle(throttle: EventThrottle) -> EventThrottle:
+    """Install a throttle (startup config, tests); returns the previous one."""
+    global _throttle
+    previous, _throttle = _throttle, throttle
+    return previous
+
+
+def log_expected(logger: logging.Logger, level: int, event: str, category: str, **fields: Any) -> None:
+    """Log an expected rejection (limits, 401/404/503 on purpose) at most once per interval per category."""
+    fields.pop("error_category", None)
+    suppressed = _throttle.allow(f"{event}:{category}")
+    if suppressed is None:
+        return
+    if suppressed:
+        fields["suppressed_since_last"] = suppressed
+    log(logger, level, event, error_category=category, **fields)
 
 
 def configure_logging(level: str = "INFO", extra_patterns: list[str] | None = None) -> None:

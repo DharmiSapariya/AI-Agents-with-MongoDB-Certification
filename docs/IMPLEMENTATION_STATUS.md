@@ -2,7 +2,7 @@
 
 Statuses: COMPLETE AND VERIFIED, IMPLEMENTED BUT NOT VERIFIED, PARTIALLY IMPLEMENTED, NOT IMPLEMENTED.
 Mocked tests (mongomock, scripted model, in-memory checkpointer) never count as live verification.
-Last updated: session 5/6 work, after roadmap item 6. Base: ef357f0 (origin/main). Tests: 174 pass (all mocked), ruff and mypy clean.
+Last updated: session 6, after roadmap item 7. Base: 858d204 (origin/main, item 6 confirmed). Tests: 238 pass (all mocked), ruff and mypy clean.
 Legend: VERIFIED LOCALLY (mocked/demo/mongomock), VERIFIED LIVE (real providers), IMPLEMENTED, VERIFICATION PENDING, PARTIAL, PLANNED. Older rows below use the earlier four-status wording; IMPLEMENTED BUT NOT VERIFIED means IMPLEMENTED, VERIFICATION PENDING.
 
 ## Phase A: backend
@@ -17,7 +17,7 @@ Legend: VERIFIED LOCALLY (mocked/demo/mongomock), VERIFIED LIVE (real providers)
 | Input validation | PARTIALLY IMPLEMENTED | thread_id/message/limit validated (tests/test_api.py); no body size cap at the server |
 | Authentication (register, login, current user) | VERIFIED LOCALLY (mongomock, 52 tests in test_auth.py/test_config.py) | `auth.py`, `routes_auth.py`. Argon2id, HS256 tokens with required claims, uniform login errors, unique email index, concurrent-registration test. Never run against Atlas; unique-index race enforced by mongomock in tests |
 | User/session ownership | VERIFIED LOCALLY (mongomock, 22 tests in test_ownership.py; mutation-checked: removing the owner filters fails 6 of them) | `sessions.py`, `routes_api.py`. Server-generated session ids, owner on every query, 404 for foreign and missing, legacy unowned records hidden. Not run against Atlas; exhaustive cross-user matrix is item 8 |
-| Rate limiting | NOT IMPLEMENTED | |
+| Rate limiting, request size limits | VERIFIED LOCALLY (fake clock; real uvicorn smoke in demo mode) | `limiter.py`, `protection.py`, `routes_api.chat_budget`; 61 tests in test_limiter (15), test_protection (24), test_abuse_limits (22), plus 3 in test_config. Process-local; not tested behind a proxy, multi-worker, or live |
 | LLM timeout / bounded retries | IMPLEMENTED BUT NOT VERIFIED | configurable for ChatOpenAI and the Voyage query call; never called live |
 | Exception handling | IMPLEMENTED BUT NOT VERIFIED | `errors.py`: uniform error body, Mongo/LLM/embedding/timeout/step-limit classification, no values or traces to clients (tests/test_errors.py). Provider exceptions are constructed in tests, not produced by real providers |
 
@@ -95,3 +95,21 @@ Scope: **public**, **auth** (any signed-in user; 503 `demo_mode` first when not 
 Not yet present, and must use `sessions.get_owned` when added: conversation history/messages endpoint (roadmap 14), streaming endpoint (13), long-term memory (14). Checkpoints are never exposed directly; the graph only receives thread ids that come from an owned session.
 
 **Legacy data:** events and quiz attempts written before item 6 have no `user_id`. Every query filters on `user_id`, so they match no user and are never returned or assigned to anyone. They remain in MongoDB. No migration is provided; if one is wanted later it must be an explicit operator script with a named target user.
+
+## Abuse limits (item 7)
+Full table, counting rules and proxy notes: README "Abuse limits". Defaults: register 10/h/IP, login 10/min/IP, chat 30/min/IP and 10/min/user, other `/api` routes 120/min/IP, `/health` exempt; body cap 32768 B (4096 B for register and login). Order for a request: IP bucket, `Content-Length` check, bounded body read (all in middleware, before parsing, auth, Argon2, graph, providers, writes); then, for chat only, authentication and the per-user bucket before any session write.
+
+| Check | Evidence |
+|---|---|
+| Below budget passes, first excess is 429 with `Retry-After`, recovery at the exact boundary | tests/test_limiter.py, test_protection.py (fake clock) |
+| Separate register/login/chat/read buckets; health never limited | test_protection.py, test_abuse_limits.py |
+| Per-user budgets independent on one IP; shared IP cap applies to all | test_abuse_limits.py |
+| User key from the verified token only (header/body spoofing has no effect) | test_abuse_limits.py |
+| Forwarded/X-Forwarded-For/X-Real-IP cannot rotate or redirect a budget; missing client address; IPv6 /64 | test_protection.py |
+| Rejected requests do no work (Argon2, graph, session create, user create spied) | test_abuse_limits.py |
+| 413 at cap+1 and for chunked bodies without Content-Length; exact cap intact; disconnect mid-body; byte cap vs character limit | test_protection.py, test_abuse_limits.py |
+| Capacity behaviour, eviction only of refilled buckets, concurrent hits never exceed budget | test_limiter.py |
+| 429/413 carry request id, CORS and `Retry-After` exposure; logs are throttled, traceback-free for expected errors, traceback kept for unexpected ones, no keys/bodies | test_protection.py, test_abuse_limits.py |
+| Mutation checks: IP check disabled -> 22 failures; chunk counting removed -> 2; user budget removed -> 7 | run manually this session |
+
+Not verified: behind a real reverse proxy, with several workers, under real load, against Atlas, with a provider-backed Mentor (does not exist yet).

@@ -9,6 +9,18 @@ from app.deps import db_provider
 from app.main import app
 
 
+@pytest.fixture(autouse=True)
+def fresh_limits():
+    """Every test starts with empty rate-limit counters and real-clock default limits."""
+    from app.logging_config import EventThrottle, set_throttle
+    from app.protection import Limits
+
+    app.state.limits = Limits.from_settings(settings)
+    previous = set_throttle(EventThrottle(10))
+    yield
+    set_throttle(previous)
+
+
 @pytest.fixture
 def signed_in(monkeypatch):
     """Live mode with a fixed authenticated user ("u1") and an injected mongomock database.

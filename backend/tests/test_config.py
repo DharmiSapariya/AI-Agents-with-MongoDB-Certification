@@ -9,7 +9,7 @@ SECRET_URI = "mongodb+srv://user:hunter2@cluster.example.net/db"
 def clean_env(monkeypatch):
     for name in ("APP_MODE", "MONGODB_URI", "OPENAI_API_KEY", "VOYAGE_API_KEY", "EMBEDDING_MODEL",
                  "EMBEDDING_DIMS", "MAX_GRAPH_STEPS", "LOG_LEVEL", "LOG_REDACT_PATTERNS", "JWT_SECRET",
-                 "ACCESS_TOKEN_TTL_MINUTES"):
+                 "ACCESS_TOKEN_TTL_MINUTES", "RATE_LIMIT_ENABLED"):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -118,3 +118,24 @@ def test_token_lifetime_is_bounded(ttl):
 
 def test_signing_key_is_hidden_in_repr():
     assert KEY not in repr(load(jwt_secret=KEY))
+
+
+def test_abuse_limit_defaults_and_bounds():
+    s = load()
+    assert (s.rate_register_ip_per_hour, s.rate_login_ip_per_min, s.rate_chat_ip_per_min, s.rate_chat_user_per_min,
+            s.rate_read_ip_per_min, s.max_body_bytes, s.max_auth_body_bytes) == (10, 10, 30, 10, 120, 32768, 4096)
+    assert s.rate_limit_enabled and s.rate_limit_max_keys == 10000
+    for field, bad in [("rate_chat_user_per_min", 0), ("rate_limit_max_keys", 10), ("max_body_bytes", 100),
+                       ("max_auth_body_bytes", 10), ("log_rejection_interval_s", 0)]:
+        with pytest.raises(ConfigError, match=field.upper()):
+            load(**{field: bad})
+
+
+def test_auth_body_cap_cannot_exceed_the_general_cap():
+    with pytest.raises(ConfigError, match="MAX_AUTH_BODY_BYTES"):
+        load(max_body_bytes=2048, max_auth_body_bytes=4096)
+
+
+def test_rate_limits_can_be_disabled_from_the_environment(monkeypatch):
+    monkeypatch.setenv("RATE_LIMIT_ENABLED", "false")
+    assert load().rate_limit_enabled is False

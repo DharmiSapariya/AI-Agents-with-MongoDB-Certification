@@ -20,6 +20,7 @@ from app.config import settings
 from app.deps import db_provider
 from app.logging_config import JsonFormatter
 from app.main import app
+from app.protection import Limits
 
 SECRET = "test-signing-secret-that-is-long-enough-0123456789"
 PASSWORD = "correct horse battery staple"
@@ -145,6 +146,8 @@ def test_duplicate_email_is_rejected_whatever_the_casing_or_spacing(client, data
 
 
 def test_concurrent_registration_of_one_email_creates_one_account(database):
+    # this test is about the unique index, so lift the per-IP registration limit above the 12 requests
+    app.state.limits = Limits.from_settings(settings.model_copy(update={"rate_register_ip_per_hour": 1000}))
     async def run():
         transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:

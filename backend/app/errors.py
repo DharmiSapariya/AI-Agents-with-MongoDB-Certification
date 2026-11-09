@@ -13,7 +13,7 @@ from pymongo import errors as mongo_errors
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .context import request_id_var
-from .logging_config import log
+from .logging_config import log_expected
 
 logger = logging.getLogger("app.errors")
 
@@ -68,6 +68,17 @@ class SessionNotFound(ApiError):
 
 class ExecutionNotFound(ApiError):
     status_code, code, message = 404, "execution_not_found", "Execution not found."
+
+
+class RateLimited(ApiError):
+    status_code, code = 429, "rate_limited"
+
+    def __init__(self, retry_after: int, message: str = "Too many requests. Try again later."):
+        super().__init__(message, headers={"Retry-After": str(retry_after)})
+
+
+class PayloadTooLarge(ApiError):
+    status_code, code = 413, "payload_too_large"
 
 
 class DemoMode(ApiError):
@@ -165,10 +176,15 @@ def classify(exc: BaseException) -> ApiError:
 async def _handle_known(request: Request, exc: Exception) -> JSONResponse:
     err = classify(exc)
     fields = {"error_category": err.code, "status": err.status_code, "exc_type": type(exc).__name__}
-    if err.status_code >= 500:
+    if isinstance(exc, ApiError):
+        # Raised on purpose (demo_mode, auth_unavailable, 401, 404...): expected, so no traceback,
+        # and at most one line per category per interval so a flood cannot flood the log.
+        log_expected(logger, logging.WARNING if err.status_code >= 500 else logging.INFO,
+                     "request_rejected", err.code, **fields)
+    elif err.status_code >= 500:
         logger.error("request_failed", exc_info=exc, extra={"fields": fields})
     else:
-        log(logger, logging.WARNING, "request_rejected", **fields)
+        log_expected(logger, logging.WARNING, "request_rejected", err.code, **fields)
     return JSONResponse(error_body(err.code, err.message), status_code=err.status_code, headers=err.headers)
 
 

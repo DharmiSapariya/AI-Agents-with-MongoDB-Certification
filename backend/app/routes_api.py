@@ -7,13 +7,13 @@ ownership existed) match no query here, so no user can read or claim them.
 import re
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from . import auth, mentor, sessions
 from .config import settings
 from .deps import db_provider
-from .errors import DemoMode, ExecutionNotFound
+from .errors import DemoMode, ExecutionNotFound, RateLimited
 
 ID_RE = r"^[A-Za-z0-9_\-]{1,64}$"
 router = APIRouter(prefix="/api")
@@ -41,6 +41,20 @@ def live_user(_: Annotated[None, Depends(require_live)], user: auth.CurrentUser)
 LiveUser = Annotated[dict[str, Any], Depends(live_user)]
 
 
+def chat_budget(request: Request, user: LiveUser) -> None:
+    """Per-user chat budget, keyed by the verified user id and charged before any session write or graph call.
+
+    It runs after authentication and before the handler's own checks, so malformed bodies and
+    ownership denials also spend it, and a throttled caller gets 429 whether or not the session exists.
+    """
+    limits = request.app.state.limits
+    if not limits.enabled:
+        return
+    decision = limits.chat_user.hit(user["_id"])
+    if not decision.allowed:
+        raise RateLimited(decision.retry_after, "Chat request limit reached for this account. Try again later.")
+
+
 def grading_user(credentials: Annotated[Any, Depends(auth._bearer)], get_db=Depends(db_provider)) -> dict | None:
     """Quiz grading works anonymously in demo mode (no accounts); with accounts enabled it needs a token."""
     if not settings.auth_enabled:
@@ -65,7 +79,7 @@ def _check_id(value: str) -> None:
 
 
 @router.post("/chat")
-def chat(body: ChatIn, user: LiveUser, get_db=Depends(db_provider)):
+def chat(body: ChatIn, user: LiveUser, _budget: Annotated[None, Depends(chat_budget)], get_db=Depends(db_provider)):
     database = get_db()
     if body.session_id:
         session = sessions.get_owned(database, user["_id"], body.session_id)
