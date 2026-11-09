@@ -8,6 +8,7 @@ from langchain_core.tools import tool
 from .config import settings
 from .embeddings import VoyageEmbeddingProvider
 from .mongo import db
+from .retrieval import vector_search
 from .tracing import emit
 
 _WRAPPER_TAG = re.compile(r"<(\s*/?\s*retrieved_document)", re.I)
@@ -28,14 +29,9 @@ def get_information_for_question_answering(user_query: str) -> str:
     """Retrieve relevant MongoDB documentation chunks for a question using Atlas Vector Search."""
     t0 = time.perf_counter()
     vec = generate_embedding(user_query)
-    pipeline = [
-        {"$vectorSearch": {"index": settings.vector_index, "path": "embedding",
-                           "queryVector": vec, "numCandidates": 150, "limit": 5}},
-        {"$project": {"_id": 1, "title": 1, "body": 1, "score": {"$meta": "vectorSearchScore"}}},
-    ]
-    docs = list(db()["chunked_docs"].aggregate(pipeline))
+    docs = vector_search(db()["chunked_docs"], settings, vec)
     emit("db_operation", node="tools", collection="chunked_docs", op="$vectorSearch",
-         index=settings.vector_index, limit=5, num_candidates=150, returned=len(docs),
+         index=settings.vector_index, limit=5, num_candidates=150, min_score=settings.vector_min_score, returned=len(docs),
          doc_ids=[str(d["_id"]) for d in docs], titles=[d.get("title") for d in docs],
          scores=[round(d["score"], 4) for d in docs],
          latency_ms=round((time.perf_counter() - t0) * 1000, 1))

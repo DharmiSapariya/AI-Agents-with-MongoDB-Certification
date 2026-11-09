@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     embedding_model: str = Field("voyage-3-lite", min_length=1)
     embedding_dims: int = Field(512, ge=1, le=4096)
     vector_index: str = Field("vector_index", min_length=1)
+    vector_min_score: float = Field(0.0, ge=0, le=1)
     max_graph_steps: int = Field(12, ge=2, le=50)
     mongo_timeout_ms: int = Field(5000, ge=500, le=60000)
     mongo_socket_timeout_ms: int = Field(30000, ge=1000, le=300000)

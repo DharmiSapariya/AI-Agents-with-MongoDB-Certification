@@ -15,7 +15,7 @@ Live-Atlas items stay "pending live verification" until run against a real clust
 
 ## Phase B: retrieval
 9. feat(embeddings): provider interface, Voyage implementation, query-side dimension check (done, session 8)
-10. feat(search): threshold, index-not-ready error, diagnostics; idempotent index script that waits
+10. feat(search): threshold, index-not-ready error, diagnostics; idempotent index script that waits (implemented, live verification pending)
 11. feat(evaluation): retrieval dataset and script (results only from real runs)
 
 ## Phase C/D: agent and memory

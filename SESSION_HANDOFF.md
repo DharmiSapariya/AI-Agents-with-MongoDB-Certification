@@ -42,3 +42,14 @@ index readiness, idempotent setup, and retrieval diagnostics.
 
 Item 9 checks: 263 passed, Ruff and Mypy clean (24 app files).
 The provider was stubbed. Voyage and Atlas credentials are unavailable here.
+
+## Session 8 checkpoint — item 10
+
+The agent vector query checks named-index readiness and compatibility, then
+applies the configured minimum score. The index CLI creates a missing
+index, waits with a deadline, and leaves incompatible indexes untouched.
+The application database role now needs search-index inspection permission
+in addition to query permission. Tests use mocked Atlas responses.
+
+Item 10 checks: 270 passed, Ruff and Mypy clean (25 app files).
+Next: item 11, a small corpus and reproducible retrieval evaluation.
