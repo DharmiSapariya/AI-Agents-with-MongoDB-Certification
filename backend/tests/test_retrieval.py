@@ -68,3 +68,20 @@ def test_index_setup_times_out_while_building(config, monkeypatch):
     with pytest.raises(TimeoutError, match="building"):
         create_vector_index.ensure_index(collection, config, 10)
     collection.create_search_index.assert_not_called()
+
+
+def test_retrieval_metrics_use_unique_matches_and_exclude_unanswerable_cases():
+    from scripts.evaluate_retrieval import evaluate
+
+    responses = iter([["wrong", "right", "right"], [], ["wrong"]])
+    cases = [
+        {"id": "partial", "query": "first", "expected_sources": ["right", "another"]},
+        {"id": "miss", "query": "second", "expected_sources": ["right"]},
+        {"id": "outside", "query": "third", "expected_sources": []},
+    ]
+    result = evaluate(cases, lambda _: next(responses))
+    assert result["recall_at_k"] == 0.25
+    assert result["mrr_at_k"] == 0.25
+    assert result["answerable_count"] == 2
+    assert result["cases"][2]["returned_no_evidence"] is False
+    assert result["cases"][2]["recall"] is None

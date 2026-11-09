@@ -131,3 +131,11 @@ fixture uses application-issued signed tokens, mongomock, and a fake graph.
 The existing ownership and abuse suites cover demo grading, forbidden collections
 and fields, identity spoofing, and independent account budgets on a shared IP.
 These tests do not exercise Atlas, a reverse proxy, or multiple workers.
+
+## Retrieval preflight and evaluation (items 9–11)
+
+| Item | Local evidence | Pending |
+|---|---|---|
+| Shared Voyage adapter | Query payload and invalid vector handling exercised with a stubbed provider | Live Voyage response for the configured model |
+| Atlas index and search | Mocked index states, idempotent setup, score filtering and source projection | Index creation and query on Atlas with the intended permissions |
+| Retrieval evaluation | Original corpus, case file, metric calculation tested with fixed inputs | Live ingestion, query results and evaluation report |

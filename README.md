@@ -65,18 +65,40 @@ This project builds on the official **MongoDB Skill badge: AI Agents with MongoD
 | Direct dependencies pinned; CI runs ruff, mypy and pytest | Pinned versions install cleanly and pass locally; CI has not been observed running on GitHub; no lockfile for transitive packages |
 | Startup settings validation, JSON logging, request IDs, MongoDB lifecycle, health states, standard error responses | IMPLEMENTED; covered by mocked tests (fake clients, mongomock), not run against Atlas |
 
-No screenshots, benchmark numbers or deployment are claimed. The course dataset is not bundled: ingest your own docs.
+A small original retrieval corpus is included for evaluation. The official course dataset is separate.
 
 ## Run
 ```bash
-cp .env.example .env        # fill in keys
-make install && make test   # no keys needed; tests use mongomock and a scripted model, not Atlas
-python scripts/create_indexes.py
-python scripts/ingest_documents.py ./my_docs
-python scripts/create_vector_index.py
-make run                    # http://localhost:8000
+make install && make test   # no keys needed; tests use mongomock and a scripted model
+make run                    # demo at http://localhost:8000
 ```
 Without keys the app runs in **demo mode**: mentor teaching and quiz work; agent, traces and DB views return 503 with code `demo_mode`.
+
+### Live retrieval evaluation
+
+From the repository root, export `MONGODB_URI`, `VOYAGE_API_KEY`, and
+`DB_NAME` for an isolated Atlas database using your local secret manager.
+The database account needs corpus write access for ingestion and search-index
+inspection permission for queries. Creating a missing index requires index
+management permission. Use an isolated database so existing titles and
+unrelated chunks cannot affect the run.
+
+```bash
+python scripts/ingest_documents.py benchmarks/retrieval/corpus
+python scripts/create_vector_index.py --wait-seconds 120
+python scripts/evaluate_retrieval.py --top-k 5 > retrieval-results.json
+```
+
+The evaluation reports source-level Recall@k and reciprocal rank over
+answerable cases. The out-of-corpus case reports whether the configured score
+filter returned any evidence. At the default `VECTOR_MIN_SCORE=0.0`, matches
+are unfiltered. The JSON records the model, dimensions, index, threshold and
+per-case results. The checked-in corpus contains original examples and the
+repository contains no recorded Atlas results yet. A live chat run also
+needs `OPENAI_API_KEY` and `JWT_SECRET`.
+
+See the [PyMongo index guide](https://www.mongodb.com/docs/languages/python/pymongo-driver/current/indexes/)
+for search-index management.
 
 ## Configuration
 Settings come from the environment or `backend/.env` and are validated at startup. A bad value stops the app with a message that names the variable, never its value.

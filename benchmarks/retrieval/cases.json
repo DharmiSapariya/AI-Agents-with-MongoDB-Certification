@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "cases": [
+    {"id": "prefix", "query": "Can I use the first field of a compound index by itself?", "expected_sources": ["compound-index-prefix.md"]},
+    {"id": "resume", "query": "Which value should I persist to resume watching change events after a restart?", "expected_sources": ["change-stream-resume.md"]},
+    {"id": "group", "query": "How do I calculate a separate sum for every category in an aggregation pipeline?", "expected_sources": ["aggregation-group.md"]},
+    {"id": "out-of-corpus", "query": "What is the annual rainfall in Chennai?", "expected_sources": []}
+  ]
+}

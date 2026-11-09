@@ -53,3 +53,21 @@ in addition to query permission. Tests use mocked Atlas responses.
 
 Item 10 checks: 270 passed, Ruff and Mypy clean (25 app files).
 Next: item 11, a small corpus and reproducible retrieval evaluation.
+
+## Session 8 checkpoint — item 11
+
+A small original corpus and versioned query set are in
+`benchmarks/retrieval/`. The evaluation CLI calls the same vector query as
+the agent, reports source-level Recall@k and reciprocal rank on answerable
+queries, and shows whether the out-of-corpus query got any results. No
+measured Atlas scores are committed.
+
+Next: run the README live retrieval steps against an isolated Atlas
+database with Voyage enabled. Then continue with item 12, structured
+citations, explicit insufficient-evidence behavior, and tool failures in the
+primary agent.
+
+Session 8 checks: 271 tests passed, Ruff and Mypy clean (25 app files),
+and diff checks clean. The evaluation CLI shows an explicit credentials
+error with no local Atlas or Voyage configuration. Retrieval and metric
+tests used mocks or deterministic fixtures. No live result was observed.
