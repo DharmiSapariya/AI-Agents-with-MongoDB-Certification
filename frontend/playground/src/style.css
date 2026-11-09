@@ -61,3 +61,6 @@ input, textarea { color: inherit; background: #101913; border: 1px solid var(--l
 .event-detail { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .4rem 1rem; }
 .event-detail dt { color: var(--muted); }
 .event-detail dd { margin: 0; overflow-wrap: anywhere; }
+.section-actions { margin-top: 1rem; }
+.record { max-height: 25rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: #101913; padding: .75rem; border-radius: .55rem; }
+.session-list button span { min-width: 0; overflow-wrap: anywhere; text-align: left; }

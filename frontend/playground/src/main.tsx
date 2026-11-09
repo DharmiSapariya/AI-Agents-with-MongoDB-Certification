@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { createRoot } from 'react-dom/client'
 import { errorText, health, json, type Health, type Token, type User } from './api'
+import { DatabaseExplorer } from './DatabaseExplorer'
+import { MemoryStudio } from './MemoryStudio'
 import { ExecutionReplay } from './ExecutionReplay'
 import { Playground } from './Playground'
 import './style.css'
 
-type View = 'playground' | 'executions'
+type View = 'playground' | 'executions' | 'memory' | 'explorer'
 const VIEWS: { id: View; label: string; intro: string }[] = [
   { id: 'playground', label: 'Agent Playground', intro: 'Ask about MongoDB, follow the execution, and check the evidence behind the answer.' },
   { id: 'executions', label: 'Execution Replay', intro: 'Inspect the events recorded during your saved agent runs.' },
+  { id: 'memory', label: 'Memory Studio', intro: 'Manage the notes you can opt to share with the agent.' },
+  { id: 'explorer', label: 'MongoDB Explorer', intro: 'Browse the collection samples available to your account.' },
 ]
 
 type Account = { user: User; token: string; expiresAt: number }
@@ -116,6 +120,8 @@ function App() {
         </div>
         {view === 'executions' && <ExecutionReplay token={account.token} onExpired={expire}
           selected={execution} onSelect={setExecution} />}
+        {view === 'memory' && <MemoryStudio token={account.token} onExpired={expire} />}
+        {view === 'explorer' && <DatabaseExplorer token={account.token} onExpired={expire} />}
       </>
         : <AuthForm disabled={Boolean(authUnavailable || healthFailed)} onSignIn={value => {
           setNotice('')
