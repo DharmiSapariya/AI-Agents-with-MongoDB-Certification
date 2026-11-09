@@ -286,3 +286,28 @@ incomplete when tracing fails. Provider retries internal to the SDK are
 not separately counted. New tool results are redacted before being capped at
 2,000 characters. Trace and learning records have no automatic expiry.
 Run `python scripts/create_indexes.py` after updating an existing database.
+
+### React Agent Playground
+
+Use Node.js 22.12 or newer. With the FastAPI backend running on port 8000,
+start the React development server in another terminal:
+
+```bash
+cd frontend/playground
+npm ci
+npm run dev
+```
+
+Open http://localhost:5173. Register or sign in, select an owned session or
+start a new conversation, and send a question. The UI reads execution
+progress, renders citation metadata, and reloads finalized conversation
+history. Stop stream closes the client connection. A run already in
+progress may still finish on the server. Sign-in lasts until expiry,
+sign-out, or page reload because the token is held in memory.
+
+The Playground displays demo and backend readiness states. Chat requires
+the configured backend. The existing FastAPI homepage at port 8000 still
+serves the original UI. To build or test the React app, run `npm run build`
+or `npm test` from `frontend/playground`. The build goes to
+`frontend/playground/dist`. Production hosting must route same-origin
+`/api` and `/health` to FastAPI and allow streaming responses.

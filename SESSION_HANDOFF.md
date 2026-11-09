@@ -163,3 +163,23 @@ React and TypeScript foundation lives in `frontend/playground`. It uses the
 existing account API, keeps its bearer token in memory, and displays
 backend readiness. Vite proxies API and health calls to port 8000 in
 development. The existing FastAPI-served frontend remains available.
+
+## Session 12 — item 20
+
+The React Playground now uses the authenticated streaming chat contract.
+It resumes owned sessions, shows finalized history and current execution
+progress, and displays citation metadata. It keeps the API token in
+memory and clears the workspace after a 401 or token expiry. The original
+FastAPI-served page remains in place. Start the React app with
+`cd frontend/playground && npm ci && npm run dev`.
+
+Next: Session 13, the execution replay, Memory Studio, MongoDB Explorer,
+and analytics views. Reuse `frontend/playground/src/api.ts` and the
+existing route policies.
+
+Checks: four frontend tests passed, TypeScript/Vite production build
+passed, and npm audit reported zero vulnerabilities. Backend suite:
+291 passed, one real-MongoDB test skipped. A Vite-to-FastAPI HTTP smoke
+test exercised registration, login, SSE parsing, and owned history with
+mongomock and a scripted graph. Chromium could not launch in this
+environment, so browser interaction and visual checks remain pending.

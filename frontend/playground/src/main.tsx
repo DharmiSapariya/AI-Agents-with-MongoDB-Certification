@@ -1,6 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { createRoot } from 'react-dom/client'
 import { errorText, health, json, type Health, type Token, type User } from './api'
+import { Playground } from './Playground'
 import './style.css'
 
 type Account = { user: User; token: string; expiresAt: number }
@@ -63,14 +64,15 @@ function App() {
     })
     return () => controller.abort()
   }, [healthCheck])
+  const expire = useCallback(() => {
+    setAccount(undefined)
+    setNotice('Your sign-in expired. Sign in to continue.')
+  }, [])
   useEffect(() => {
     if (!account) return
-    const timer = window.setTimeout(() => {
-      setAccount(undefined)
-      setNotice('Your sign-in expired. Sign in to continue.')
-    }, Math.max(0, account.expiresAt - Date.now()))
+    const timer = window.setTimeout(expire, Math.max(0, account.expiresAt - Date.now()))
     return () => window.clearTimeout(timer)
-  }, [account])
+  }, [account, expire])
   const authUnavailable = status?.auth === 'unavailable'
   const badge = healthFailed ? 'Backend offline' : status ? `${status.mode} · ${status.mongodb}` : 'Checking backend'
 
@@ -93,7 +95,7 @@ function App() {
       {status?.status === 'degraded' && <p className="notice" role="status">The backend is running but MongoDB is unavailable.</p>}
       {authUnavailable && <p className="notice" role="status">Account access is unavailable in this configuration. The existing backend page still offers the demo lessons and quiz.</p>}
       {notice && <p className="notice" role="status">{notice}</p>}
-      {account ? <section className="card"><h2>Workspace</h2><p>Signed in as {account.user.email}.</p></section>
+      {account ? <Playground token={account.token} email={account.user.email} onExpired={expire} />
         : <AuthForm disabled={Boolean(authUnavailable || healthFailed)} onSignIn={value => {
           setNotice('')
           setAccount(value)

@@ -30,7 +30,7 @@ Live-Atlas items stay "pending live verification" until run against a real clust
 18. feat(observability): user ids on events, full tool results with caps, analytics endpoints (implemented, session 11)
 
 ## Phase F: frontend (one commit per page group)
-19. foundation and auth; 20. playground with streaming; 21. live execution; 22. memory and explorer; 23. observability; 24. mentor and learning center; 25. benchmarks, documentation, certification
+19. foundation and auth (session 12); 20. playground with streaming (session 12); 21. live execution; 22. memory and explorer; 23. observability; 24. mentor and learning center; 25. benchmarks, documentation, certification
 
 ## Phase H/I
 26. feat(evaluation): benchmark runner and stored runs; 27. Docker hardening and healthchecks; 28. docs finalisation with real screenshots

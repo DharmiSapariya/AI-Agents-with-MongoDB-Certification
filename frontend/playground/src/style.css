@@ -34,3 +34,24 @@ input, textarea { color: inherit; background: #101913; border: 1px solid var(--l
 .auth > .quiet { margin-top: .9rem; }
 .notice, .error { padding: .75rem; border: 1px solid var(--line); border-radius: .6rem; overflow-wrap: anywhere; }
 .error { color: var(--error); }
+.workspace { display: grid; grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr); gap: 1rem; align-items: start; }
+.muted { color: var(--muted); }
+.wrap, .turn, .citations { overflow-wrap: anywhere; }
+.session-list { list-style: none; padding: 0; display: grid; gap: .45rem; }
+.session-list button { width: 100%; display: flex; justify-content: space-between; gap: .4rem; }
+.session-list button[aria-pressed="true"] { background: #294a34; }
+.section-heading, .composer-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .65rem; }
+.section-heading h2 { margin: 0; }
+.turn { border-bottom: 1px solid var(--line); padding: .5rem 0; white-space: pre-wrap; }
+.question { font-weight: 700; color: var(--mint); }
+.citations { margin: .75rem 0; color: var(--muted); }
+.citations summary { cursor: pointer; color: var(--mint); }
+.citations li { margin: .4rem 0; }
+.citations small { display: block; }
+.composer { display: grid; gap: .75rem; margin-top: 1rem; }
+.composer textarea { resize: vertical; }
+.checkbox { display: flex; align-items: center; gap: .35rem; }
+@media (max-width: 720px) {
+  .workspace { grid-template-columns: 1fr; }
+  .session-list { max-height: 11rem; overflow-y: auto; }
+}

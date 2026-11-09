@@ -169,3 +169,12 @@ exercise signed tokens, isolation, deletion and graph prompt construction.
 
 The Mentor workflow uses no provider. Real MongoDB aggregation, Atlas, and
 deployed behavior remain unverified.
+
+## React foundation and Agent Playground (items 19–20)
+
+The React app is in `frontend/playground`. It uses the existing health,
+account, session history, and streaming chat APIs. It supports account
+registration and sign-in, owned session selection, cancellation of stream
+delivery, citation inspection, and optional saved notes. Legacy HTML
+remains usable through the backend. Dedicated replay and operations
+screens are planned for Session 13.
