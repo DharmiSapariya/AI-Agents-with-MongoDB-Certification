@@ -74,7 +74,7 @@ export function ExecutionReplay({ selected, onSelect, onMentor, ...access }: Acc
     </section>
     <section className="card">
       <div className="section-heading"><h2>Execution timeline</h2>
-        {selected && trace.data?.length && <button className="quiet" onClick={() => onMentor(selected)}>Open in Mentor</button>}
+        {selected && Boolean(trace.data?.length) && <button className="quiet" onClick={() => onMentor(selected)}>Open in Mentor</button>}
       </div>
       {!selected ? <p className="muted">Select a saved run to inspect its events.</p>
         : trace.error ? <p className="error" role="alert">{trace.error}</p>

@@ -175,7 +175,7 @@ export function Playground({ token, email, onExpired, onInspect }: { token: stri
       </details>}
       {result && <p className="muted wrap">Run {result.execution_id} · {result.outcome.replaceAll('_', ' ')}
         {!result.fully_recorded && ' · trace incomplete'} {' '}
-        <button className="quiet" onClick={() => onInspect(result.execution_id)}>Replay run</button></p>}
+        {!alreadyRecorded && <button className="quiet" onClick={() => onInspect(result.execution_id)}>Replay run</button>}</p>}
       {error && <p className="error" role="alert">{error}</p>}
       {activity && <p className="muted" role="status">{activity}</p>}
       <form className="composer" onSubmit={send}>

@@ -250,3 +250,22 @@ passed. Docker Compose config validation and actionlint passed. No Docker
 daemon was available here, so container build and startup remain pending.
 The evaluator's no-credentials guard was exercised; no live benchmark
 scores were generated.
+
+## Session 16 — item 28
+
+The release pass updates the README, separates operations and demo
+guidance, and records evidence with genuine Chromium captures. The
+credential-free Resources view ran against FastAPI demo mode. The
+authenticated Playground and Mentor captures use a clearly labeled
+scripted primary run and mongomock. A browser check exposed a duplicate
+Replay action after history loaded; the final UI shows a single action.
+
+Clean checkout checks passed: 292 backend tests (one real-MongoDB test
+skipped), Ruff, Mypy, seven frontend tests, and the production build.
+Hosted backend, frontend, and container demo checks passed at published
+Session 15 tip `55d00a3` (GitHub Actions run `42649184362`).
+Live Atlas, Voyage, OpenAI, benchmark scores, and real checkpoint
+restoration remain unverified.
+
+This is the final planned implementation session. The next action after
+publication is optional live verification using `docs/DEMO.md`.
