@@ -73,3 +73,4 @@ input, textarea { color: inherit; background: #101913; border: 1px solid var(--l
 .table-wrap { overflow: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: .55rem; text-align: left; border-bottom: 1px solid var(--line); }
+.composer select { font: inherit; color: inherit; background: #101913; border: 1px solid var(--line); border-radius: .5rem; padding: .65rem; min-width: 0; }

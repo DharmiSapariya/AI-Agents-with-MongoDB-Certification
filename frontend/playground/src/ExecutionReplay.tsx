@@ -49,8 +49,8 @@ function Timeline({ events }: { events: Event[] }) {
   </>
 }
 
-export function ExecutionReplay({ selected, onSelect, ...access }: Access & {
-  selected?: string; onSelect: (id: string) => void
+export function ExecutionReplay({ selected, onSelect, onMentor, ...access }: Access & {
+  selected?: string; onSelect: (id: string) => void; onMentor: (id: string) => void
 }) {
   const [skip, setSkip] = useState(0)
   const runs = useResource<Event[]>(`/api/executions?limit=${PAGE_SIZE + 1}&skip=${skip}`, access)
@@ -73,7 +73,9 @@ export function ExecutionReplay({ selected, onSelect, ...access }: Access & {
       </div>
     </section>
     <section className="card">
-      <h2>Execution timeline</h2>
+      <div className="section-heading"><h2>Execution timeline</h2>
+        {selected && trace.data?.length && <button className="quiet" onClick={() => onMentor(selected)}>Open in Mentor</button>}
+      </div>
       {!selected ? <p className="muted">Select a saved run to inspect its events.</p>
         : trace.error ? <p className="error" role="alert">{trace.error}</p>
         : !trace.data ? <p>Loading execution…</p>

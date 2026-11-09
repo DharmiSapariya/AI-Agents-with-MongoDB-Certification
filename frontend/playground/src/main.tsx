@@ -3,18 +3,20 @@ import { createRoot } from 'react-dom/client'
 import { errorText, health, json, type Health, type Token, type User } from './api'
 import { AnalyticsView } from './AnalyticsView'
 import { DatabaseExplorer } from './DatabaseExplorer'
+import { MentorView } from './MentorView'
 import { MemoryStudio } from './MemoryStudio'
 import { ExecutionReplay } from './ExecutionReplay'
 import { Playground } from './Playground'
 import './style.css'
 
-type View = 'playground' | 'executions' | 'memory' | 'explorer' | 'analytics'
+type View = 'playground' | 'executions' | 'memory' | 'explorer' | 'analytics' | 'mentor'
 const VIEWS: { id: View; label: string; intro: string }[] = [
   { id: 'playground', label: 'Agent Playground', intro: 'Ask about MongoDB, follow the execution, and check the evidence behind the answer.' },
   { id: 'executions', label: 'Execution Replay', intro: 'Inspect the events recorded during your saved agent runs.' },
   { id: 'memory', label: 'Memory Studio', intro: 'Manage the notes you can opt to share with the agent.' },
   { id: 'explorer', label: 'MongoDB Explorer', intro: 'Browse the collection samples available to your account.' },
   { id: 'analytics', label: 'Analytics', intro: 'Review latency, outcomes, and provider usage from recorded runs.' },
+  { id: 'mentor', label: 'Mentor Learning Center', intro: 'Learn from lessons, challenges, and your recorded executions.' },
 ]
 
 type Account = { user: User; token: string; expiresAt: number }
@@ -72,6 +74,8 @@ function App() {
   const [notice, setNotice] = useState('')
   const [view, setView] = useState<View>('playground')
   const [execution, setExecution] = useState<string>()
+  const [mentorSession, setMentorSession] = useState<string>()
+  const [mentorExecution, setMentorExecution] = useState<string>()
   const activeView = VIEWS.find(item => item.id === (account ? view : 'playground'))!
   const showExecution = (id: string) => { setExecution(id); setView('executions') }
   useEffect(() => {
@@ -121,15 +125,22 @@ function App() {
           <Playground token={account.token} email={account.user.email} onExpired={expire} onInspect={showExecution} />
         </div>
         {view === 'executions' && <ExecutionReplay token={account.token} onExpired={expire}
-          selected={execution} onSelect={setExecution} />}
+          selected={execution} onSelect={setExecution} onMentor={id => {
+            setMentorExecution(id)
+            setView('mentor')
+          }} />}
         {view === 'memory' && <MemoryStudio token={account.token} onExpired={expire} />}
         {view === 'explorer' && <DatabaseExplorer token={account.token} onExpired={expire} />}
         {view === 'analytics' && <AnalyticsView token={account.token} onExpired={expire} />}
+        {view === 'mentor' && <MentorView token={account.token} onExpired={expire}
+          session={mentorSession} onSession={setMentorSession} initialExecution={mentorExecution} />}
       </>
         : <AuthForm disabled={Boolean(authUnavailable || healthFailed)} onSignIn={value => {
           setNotice('')
           setView('playground')
           setExecution(undefined)
+          setMentorSession(undefined)
+          setMentorExecution(undefined)
           setAccount(value)
         }} />}
     </main>
