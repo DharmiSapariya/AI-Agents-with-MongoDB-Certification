@@ -1,15 +1,33 @@
 # Session handoff
 
-**Roadmap item 7 (abuse limits and request size caps).** Base `858d204` (origin/main; item 6 confirmed there). Branch `session6-abuse-limits` holds one commit: `feat(security): add rate limits and request size protections`. Not pushed. READY TO PUBLISH.
+Session 7 covers roadmap item 8. Base `cdc6fa4` is the published Session 6
+abuse-protection commit. The route-policy matrix exercises the actual app
+with signed tokens, mongomock, and a fake graph. No production code changed.
 
-Checks (clean venv, Python 3.12): `pytest -q` 238 passed (baseline at 858d204: 174); `ruff check . ../scripts` clean; `mypy app` clean (23 files); `git diff --check` clean. Mocked: fake clock, mongomock, fake graph. Real uvicorn smoke in demo mode: normal 200, 429 with `Retry-After`, 413 for a declared and a chunked oversized body, `/health` exempt, matching request ids, one throttled log line per category. Mutation checks: IP check off -> 22 failures, chunk counting off -> 2, user budget off -> 7. Not run: Atlas, providers, GitHub CI, a reverse proxy, several workers.
+## Retrieval preflight
 
-Decisions to keep: ADR 16 (token bucket, process-local; limits in middleware inside request-id and CORS; per-user chat budget after auth and before the ownership lookup; body buffered up to the cap and replayed; client address only from `scope["client"]`; expected errors logged once per interval without tracebacks). Rate limits do not apply to `/health`; `RATE_LIMIT_ENABLED=false` keeps body caps. Tests: `tests/conftest.py` resets `app.state.limits` and the log throttle before every test; use `tests/clock.py` and `tests/asgi.py` for deterministic time and raw ASGI bodies.
+- `scripts/ingest_documents.py` takes a directory of Markdown/text files.
+  It stores full documents and chunks in `full_docs` and `chunked_docs`.
+  Existing ingestion validates vector length, but the query path does not.
+- Both paths default to `voyage-3-lite` and 512 dimensions. The index script
+  creates a cosine vector index on `chunked_docs.embedding` using the
+  configured index name, but does not reconcile an existing index or wait.
+- Full-document lookup currently uses an exact title. Ingestion skips an
+  unchanged title/hash when its chunk count matches, and replaces chunks
+  and the full document when content changes. A corpus is not bundled.
+- Live verification needs an isolated Atlas database, a database user that
+  can write the sample corpus, an index with the configured name and
+  dimensions (or permission to manage it), and `VOYAGE_API_KEY` for
+  embedding. The authenticated chat demo additionally needs
+  `OPENAI_API_KEY` and `JWT_SECRET`. Do not share secret values in chat.
 
-Existing tests changed: `test_concurrent_registration_of_one_email_creates_one_account` now raises the per-IP registration limit (12 requests exceed the new default of 10/hour); it is about the unique index.
+Next is item 9. Start in `backend/app/tools.py` and
+`scripts/ingest_documents.py`. Share the Voyage embedding path and reject
+bad query dimensions before constructing a MongoDB search.
 
-Remaining limitations: counters are per process (N workers ~ N x budget, reset on restart); no body read timeout; proxy topology untested; a provider-backed Mentor mode does not exist and must get a user budget when added.
+## Verification
 
-**Next: roadmap item 8**, the exhaustive cross-user and abuse regression matrix. First actions: list every route in the README and docs tables; build one parametrized test matrix over (route x {anonymous, user A, user B accessing A's resource, expired token, legacy unowned data}) asserting status, error code and that no data from the other user appears; add stream-establishment cases only if a streaming route exists (it does not yet); keep mongomock and real-MongoDB variants distinguishable (live tests opt-in).
-
-Needs from the user: Atlas URI with a vector index, OpenAI and Voyage keys, `JWT_SECRET` for live runs.
+Baseline: 238 tests passed. Session 7: 262 passed, Ruff and Mypy clean
+(23 app files), and diff checks clean. Removing the session owner filter in
+an isolated copy caused three targeted tests to fail. The committed source
+retains the filter. Live Atlas and providers were not exercised.

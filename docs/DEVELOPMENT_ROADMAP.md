@@ -11,7 +11,7 @@ Live-Atlas items stay "pending live verification" until run against a real clust
 5. feat(auth): users, password hashing, signed tokens, `/api/auth/*` (done, session 4)
 6. feat(sessions): server-generated thread ids, ownership checks on chat, executions, db routes (done, session 5/6)
 7. feat(security): per-user and per-IP rate limits, request size limit (done, session 6; safe error schema done, session 3)
-8. test(security): cross-user access tests for every route
+8. test(security): cross-user access tests for every route (done, session 7)
 
 ## Phase B: retrieval
 9. feat(embeddings): provider interface, Voyage implementation, query-side dimension check

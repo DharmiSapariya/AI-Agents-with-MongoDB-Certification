@@ -113,3 +113,21 @@ Full table, counting rules and proxy notes: README "Abuse limits". Defaults: reg
 | Mutation checks: IP check disabled -> 22 failures; chunk counting removed -> 2; user budget removed -> 7 | run manually this session |
 
 Not verified: behind a real reverse proxy, with several workers, under real load, against Atlas, with a provider-backed Mentor (does not exist yet).
+
+## Security regression matrix (item 8)
+
+`backend/tests/test_security_matrix.py` checks the registered method and path
+inventory, including framework documentation routes outside OpenAPI. Its live-mode
+fixture uses application-issued signed tokens, mongomock, and a fake graph.
+
+| Policy | Routes and evidence |
+|---|---|
+| Public | Health, homepage, API docs, OpenAPI, registration, login, static Mentor lessons and quiz questions |
+| Authenticated | Current user, quiz grading with accounts enabled, and the explorer |
+| Owner-scoped detail | Chat resume, session detail, execution detail, and Mentor explanations compare foreign, missing, and legacy IDs and exercise successful owner requests |
+| Owner-scoped lists | Sessions, executions, and explorer data. Execution and explorer pagination apply the owner filter before slicing |
+| Middleware order | Oversized unauthenticated chat gets 413, normal unauthenticated chat gets 401, foreign session gets 404, exhausted account gets 429 before lookup, and an exhausted IP gets 429 before body validation |
+
+The existing ownership and abuse suites cover demo grading, forbidden collections
+and fields, identity spoofing, and independent account budgets on a shared IP.
+These tests do not exercise Atlas, a reverse proxy, or multiple workers.
