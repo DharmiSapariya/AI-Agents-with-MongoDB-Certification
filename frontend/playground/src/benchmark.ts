@@ -1,6 +1,7 @@
 type Case = { id: string; recall: number | null; reciprocal_rank: number | null;
   returned_no_evidence: boolean | null; latency_ms: number; error?: string | null }
 export type BenchmarkReport = {
+  dataset_sha256?: string; git_sha?: string | null
   mode: string; strategy?: string; run_id?: string; failed_cases?: number; dataset_version: string; model: string; index: string; dimensions: number
   top_k: number; min_score: number; case_count: number; answerable_count: number
   recall_at_k: number | null; mrr_at_k: number | null; cases: Case[]
@@ -27,6 +28,8 @@ function isCase(value: unknown): value is Case {
 export function parseBenchmark(text: string): BenchmarkReport {
   const value: unknown = JSON.parse(text)
   if (!record(value) || typeof value.mode !== 'string' || typeof value.dataset_version !== 'string' ||
+    (value.dataset_sha256 !== undefined && (typeof value.dataset_sha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(value.dataset_sha256))) ||
+    (value.git_sha != null && typeof value.git_sha !== 'string') ||
     (value.strategy !== undefined && typeof value.strategy !== 'string') ||
     (value.run_id !== undefined && typeof value.run_id !== 'string') ||
     (value.failed_cases !== undefined && !count(value.failed_cases)) || typeof value.model !== 'string' || typeof value.index !== 'string' || !count(value.dimensions) ||
@@ -38,4 +41,18 @@ export function parseBenchmark(text: string): BenchmarkReport {
     throw new Error('This file does not match the retrieval evaluator report format.')
   }
   return value as BenchmarkReport
+}
+
+
+export function comparisonIssue(first: BenchmarkReport, second: BenchmarkReport): string | null {
+  if (!first.dataset_sha256 || !second.dataset_sha256) return 'Both reports need a dataset hash.'
+  if (first.dataset_sha256 !== second.dataset_sha256) return 'The reports use different datasets.'
+  if (first.mode !== second.mode || first.top_k !== second.top_k || first.model !== second.model ||
+      first.index !== second.index || first.dimensions !== second.dimensions || first.min_score !== second.min_score) {
+    return 'The reports use different retrieval settings or run modes.'
+  }
+  const secondIds = new Set(second.cases.map(item => item.id))
+  if (first.case_count !== second.case_count || first.answerable_count !== second.answerable_count ||
+      first.cases.some(item => !secondIds.has(item.id))) return 'The reports contain different evaluation cases.'
+  return null
 }

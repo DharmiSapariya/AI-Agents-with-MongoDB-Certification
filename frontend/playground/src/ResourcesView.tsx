@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent } from 'react'
-import { parseBenchmark, type BenchmarkReport } from './benchmark'
+import { comparisonIssue, parseBenchmark, type BenchmarkReport } from './benchmark'
 
 const repo = 'https://github.com/DharmiSapariya/AI-Agents-with-MongoDB-Certification'
 const badge = 'https://www.credly.com/badges/9b5d068b-0566-479f-812b-93b06d01041b'
@@ -9,21 +9,24 @@ const score = (value: number | null) => value === null ? 'Unavailable' : value.t
 export function ResourcesView() {
   const [report, setReport] = useState<BenchmarkReport>()
   const [fileName, setFileName] = useState('')
+  const [comparison, setComparison] = useState<{ name: string; data: BenchmarkReport }>()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  async function load(event: ChangeEvent<HTMLInputElement>) {
+  async function load(event: ChangeEvent<HTMLInputElement>, secondary = false) {
     const input = event.currentTarget
     const file = input.files?.[0]
     if (!file) return
     input.value = ''
     setBusy(true)
     setError('')
-    setReport(undefined)
+    if (secondary) setComparison(undefined)
+    else { setReport(undefined); setComparison(undefined) }
     try {
       if (file.size > 1024 * 1024) throw new Error('Choose a JSON report of 1 MB or less.')
-      setReport(parseBenchmark(await file.text()))
-      setFileName(file.name)
+      const data = parseBenchmark(await file.text())
+      if (secondary) setComparison({ name: file.name, data })
+      else { setReport(data); setFileName(file.name) }
     } catch (failure) {
       setError(failure instanceof SyntaxError ? 'The selected file is not valid JSON.'
         : failure instanceof Error ? failure.message : 'Could not read the selected report.')
@@ -31,6 +34,8 @@ export function ResourcesView() {
       setBusy(false)
     }
   }
+
+  const issue = report && comparison ? comparisonIssue(report, comparison.data) : null
 
   return <div className="resource-grid">
     <section className="card">
@@ -57,7 +62,7 @@ export function ResourcesView() {
       <h2>Benchmark report</h2>
       <p>Load JSON produced by the retrieval evaluator. The file stays in this browser tab.</p>
       <p><a href={`${repo}#live-retrieval-evaluation`}>How to run the evaluator</a></p>
-      <label>Evaluation report file<input type="file" accept=".json,application/json" onChange={load} disabled={busy} /></label>
+      <label>Evaluation report file<input type="file" accept=".json,application/json" onChange={event => void load(event)} disabled={busy} /></label>
       {error && <p className="error" role="alert">{error}</p>}
       {busy && <p role="status">Reading report…</p>}
       {!report && !busy && <p className="muted">No results loaded. The application does not ship benchmark scores.</p>}
@@ -65,6 +70,8 @@ export function ResourcesView() {
         <p className="muted wrap">Imported file {fileName} · Mode declared in report {report.mode}</p>
         <dl className="event-detail">
           <dt>Dataset</dt><dd>{report.dataset_version}</dd>
+          {report.dataset_sha256 && <><dt>Dataset hash</dt><dd><code>{report.dataset_sha256}</code></dd></>}
+          {report.git_sha && <><dt>Revision</dt><dd><code>{report.git_sha}</code></dd></>}
           {report.strategy && <><dt>Strategy</dt><dd>{report.strategy}</dd></>}
           {report.run_id && <><dt>Run ID</dt><dd>{report.run_id}</dd></>}
           <dt>Model</dt><dd>{report.model} · {report.dimensions} dimensions</dd>
@@ -80,7 +87,25 @@ export function ResourcesView() {
             <td>{score(item.recall)}</td><td>{score(item.reciprocal_rank)}</td>
             <td>{item.error ? `Failed: ${item.error}` : item.returned_no_evidence == null ? 'Unavailable' : item.returned_no_evidence ? 'No' : 'Yes'}</td><td>{item.latency_ms} ms</td></tr>)}</tbody>
         </table></div>}
-        <button className="quiet section-actions" onClick={() => setReport(undefined)}>Clear report</button>
+        <section className="comparison-panel">
+          <h3>Compare a second run</h3>
+          <label>Comparison report file<input type="file" accept=".json,application/json"
+            onChange={event => void load(event, true)} disabled={busy} /></label>
+          {issue && <p className="notice" role="status">{issue}</p>}
+          {comparison && !issue && <>
+            <p className="muted wrap">Comparing {fileName} with {comparison.name}. Metadata matches. Check that both runs used the same corpus snapshot.</p>
+            <div className="table-wrap"><table>
+              <thead><tr><th scope="col">Run</th><th scope="col">Recall@{report.top_k}</th><th scope="col">MRR@{report.top_k}</th>
+                <th scope="col">Failed cases</th></tr></thead>
+              <tbody>{[report, comparison.data].map((item, index) => <tr key={index}>
+                <th scope="row">{item.strategy ?? (index === 0 ? 'First report' : 'Second report')}</th>
+                <td>{score(item.recall_at_k)}</td><td>{score(item.mrr_at_k)}</td>
+                <td>{item.failed_cases ?? 'Unavailable'}</td>
+              </tr>)}</tbody>
+            </table></div>
+          </>}
+        </section>
+        <button className="quiet section-actions" onClick={() => { setReport(undefined); setComparison(undefined); setError('') }}>Clear report</button>
       </>}
     </section>
   </div>
