@@ -4,7 +4,9 @@ import { type Access, useResource } from './resources'
 
 const lessons = [
   ['agent', 'AI agents'], ['tools', 'Tools and function calling'], ['langgraph', 'LangGraph'],
-  ['memory', 'Memory'], ['vector_search', 'Vector search'], ['observability', 'Observability'],
+  ['mongodb', 'MongoDB documents'], ['embeddings', 'Embeddings'], ['vector_search', 'Vector search'],
+  ['rag', 'Retrieval-augmented generation'], ['memory', 'Short- and long-term memory'],
+  ['checkpointing', 'Checkpointing'], ['observability', 'Observability'], ['multi_agent', 'Multi-agent systems'],
 ]
 const modes = [
   ['teach', 'Learn a concept'], ['watch', 'Watch a trace'], ['step', 'Step through a trace'],
@@ -98,7 +100,7 @@ export function MentorView({ session, onSession, initialExecution, ...access }: 
     setError('')
   }
 
-  return <div className="workspace">
+  return <div className="workspace mentor-layout">
     <aside className="card">
       <h2>Learning progress</h2>
       {progress.error ? <p className="error" role="alert">{progress.error}</p> : progress.data ? <>
@@ -106,6 +108,14 @@ export function MentorView({ session, onSession, initialExecution, ...access }: 
         <p>{progress.data.quiz.attempts} quiz attempts · Best: {progress.data.quiz.best_score ?? '—'}</p>
         <p>{progress.data.challenges_passed.length} challenges passed</p>
       </> : <p>Loading progress…</p>}
+      <details className="citations">
+        <summary>Learning topics</summary>
+        <div className="topic-list">{lessons.map(([key, label]) =>
+          <button type="button" className="quiet" key={key} disabled={busy}
+            aria-pressed={mode === 'teach' && concept === key} onClick={() => {
+              setConcept(key); setMode('teach'); setResult(undefined); setError('')
+            }}>{label}{progress.data?.lessons_viewed.includes(key) && ' · Viewed'}</button>)}</div>
+      </details>
       <h2>Mentor session</h2>
       <p className="muted wrap">{session ?? 'A session starts with your first activity.'}</p>
       {session && <button className="quiet" disabled={busy} onClick={() => {

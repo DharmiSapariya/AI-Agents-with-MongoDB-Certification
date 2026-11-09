@@ -56,3 +56,16 @@ def test_mentor_quiz_challenges_and_progress_are_deterministic_and_owner_scoped(
     assert client.get("/api/mentor/progress", headers=bob["headers"]).json() == {
         "lessons_viewed": [], "quiz": {"attempts": 0, "best_score": None}, "challenges_passed": [],
     }
+
+
+def test_expanded_learning_topics_have_exercises_and_implementation_paths(two_users):
+    client, _, alice, _ = two_users
+    for concept in ("mongodb", "embeddings", "rag", "checkpointing", "multi_agent"):
+        response = client.post("/api/mentor/run", headers=alice["headers"], json={
+            "mode": "teach", "concept": concept,
+        })
+        assert response.status_code == 200
+        lesson = response.json()["lesson"]
+        assert len(lesson["text"]) > 100
+        assert lesson["file"].startswith("backend/app/")
+        assert lesson["file"] in lesson["exercise"]

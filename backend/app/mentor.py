@@ -24,6 +24,25 @@ CONCEPTS = {
     "vector_search": {"official": True, "title": "Embeddings and vector search",
                       "text": "Text is converted to vectors; $vectorSearch returns chunks whose vectors are closest "
                               "(cosine) to the query vector."},
+    "mongodb": {"official": False, "title": "MongoDB document collections",
+                "text": "Collections store BSON documents. This project keeps full pages separate from chunks "
+                        "so exact lookup and similarity search can use different query shapes. Compare the "
+                        "full_docs and chunked_docs projections in the Explorer."},
+    "embeddings": {"official": False, "title": "Embeddings and dimensions",
+                   "text": "A query and its indexed document vectors need the same embedding space and dimensions. "
+                           "The shared Voyage adapter checks vector length before the query reaches MongoDB."},
+    "rag": {"official": False, "title": "Retrieval-augmented generation",
+            "text": "The primary model asks a tool for evidence and receives that evidence before writing a final "
+                    "answer. Current-turn citation checks tie each accepted source ID to that run. Citation "
+                    "provenance alone cannot determine whether every claim follows from the source."},
+    "checkpointing": {"official": False, "title": "Checkpointing and session ownership",
+                      "text": "The checkpointer restores graph state by thread ID. The API first resolves an owned "
+                              "session and passes its server-generated ID to the graph. A foreign session ID cannot "
+                              "select another account's checkpoint."},
+    "multi_agent": {"official": False, "title": "Separating agent responsibilities",
+                    "text": "The primary graph retrieves evidence and answers questions. The Mentor graph reads an "
+                            "allowlisted view of a saved execution and stores separate learning progress. "
+                            "Explaining an execution does not call the primary tools again."},
     "observability": {"official": False, "title": "Agent observability (additional material)",
                       "text": "This project records each graph/tool/database event in MongoDB so executions can be inspected."},
 }
@@ -48,6 +67,11 @@ _LESSON_FILES = {
     "memory": "backend/app/memory.py",
     "vector_search": "backend/app/retrieval.py",
     "observability": "backend/app/tracing.py",
+    "mongodb": "backend/app/ingest.py",
+    "embeddings": "backend/app/embeddings.py",
+    "rag": "backend/app/graph.py",
+    "checkpointing": "backend/app/sessions.py",
+    "multi_agent": "backend/app/mentor_graph.py",
 }
 
 CHALLENGES = {
