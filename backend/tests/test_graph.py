@@ -218,3 +218,78 @@ def test_tool_trace_caps_and_redacts_result_before_persisting(agent):
     assert event["data"]["result_truncated"] is True
     assert "sk-1234567890-secret" not in event["data"]["result"]
     assert "[REDACTED]" in event["data"]["result"]
+
+
+def test_model_can_choose_an_explicit_direct_answer(agent):
+    model, database = agent
+    model.replies = [AIMessage(content="[DIRECT] An agent can decide which action to take next.")]
+    result = graph.run("direct", "What is an AI agent?")
+    assert result["outcome"] == "direct_answer"
+    assert result["answer"].startswith("An agent") and not result["citations"]
+    assert not any(event["type"] == "tool_start" for event in events(database, "direct"))
+
+
+def test_multiple_tool_rounds_use_current_sources_and_enforce_call_budget(agent, monkeypatch):
+    model, database = agent
+    database.full_docs.insert_one({"title": "Indexes", "body": "index prefixes"})
+    monkeypatch.setattr(graph.settings, "max_tool_calls", 2)
+    name = "get_page_content_for_summarization"
+
+    def finish(messages):
+        citations = [re.search(r'citation="([^"]+)"', msg.content).group(1)
+                     for msg in messages if msg.type == "tool" and 'citation="' in msg.content]
+        assert len(citations) == 2
+        return AIMessage(content="Compare. " + " ".join(f"[{citation}]" for citation in citations))
+
+    model.replies = [tool_call(name, {"user_query": "Aggregation"}, "a"),
+                     tool_call(name, {"user_query": "Indexes"}, "b"),
+                     tool_call(name, {"user_query": "Indexes"}, "c"), finish]
+    result = graph.run("multi", "Compare aggregation and indexes")
+    assert result["outcome"] == "answered"
+    assert [source["title"] for source in result["citations"]] == ["Aggregation", "Indexes"]
+    trace = events(database, "multi")
+    assert sum(event["type"] == "db_operation" for event in trace) == 2
+    assert any(event["data"].get("error_category") == "tool_budget_exhausted" for event in trace)
+
+
+def test_model_history_preserves_tool_pairs_and_omits_abandoned_turns():
+    from langchain_core.messages import HumanMessage, ToolMessage
+
+    messages = [
+        HumanMessage(content="Too old"), AIMessage(content="Old"),
+        HumanMessage(content="Completed"), tool_call("lookup", {}, "previous"),
+        ToolMessage(content="Evidence", tool_call_id="previous"), AIMessage(content="Done"),
+        HumanMessage(content="Abandoned"), tool_call("lookup", {}, "abandoned"),
+        HumanMessage(content="Current"), tool_call("lookup", {}, "current"),
+        ToolMessage(content="Current evidence", tool_call_id="current"),
+    ]
+    assert graph.model_history(messages, 2) == messages[2:6] + messages[8:]
+
+
+def test_overlapping_session_turn_is_rejected_and_lock_releases(monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    entered, release = Event(), Event()
+
+    def fake_run(thread_id, user_input, *_args, **_kwargs):
+        if user_input == "slow":
+            entered.set()
+            assert release.wait(5)
+            raise RuntimeError("provider failed")
+        return {"answer": thread_id}
+
+    monkeypatch.setattr(graph, "_run", fake_run)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        first = pool.submit(graph.run, "s_busy", "slow")
+        try:
+            assert entered.wait(5)
+            with pytest.raises(graph.ApiError) as exc:
+                graph.run("s_busy", "next")
+            assert (exc.value.status_code, exc.value.code) == (409, "session_busy")
+            assert graph.run("s_other", "next") == {"answer": "s_other"}
+        finally:
+            release.set()
+        with pytest.raises(RuntimeError, match="provider failed"):
+            first.result()
+    assert graph.run("s_busy", "retry") == {"answer": "s_busy"}

@@ -46,6 +46,7 @@ class Tracer:
         self.agent = agent
         self.sources: dict[str, dict] = {}
         self.tool_failed = False
+        self.tool_calls = 0
         self.on_event = on_event
         self.seq = 0
         self.t0 = time.perf_counter()
