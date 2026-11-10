@@ -269,3 +269,10 @@ restoration remain unverified.
 
 This is the final planned implementation session. The next action after
 publication is optional live verification using `docs/DEMO.md`.
+
+## Backend hardening follow-up
+
+The backend adds model-selected direct responses, per-turn tool budgets,
+bounded evidence and prompt history, and a process-local session guard.
+See [backend hardening](docs/BACKEND_HARDENING.md) for the audit, local
+verification, and remaining live deployment gates.
