@@ -33,7 +33,7 @@ def index_state(collection, config: Settings) -> str:
     return "building"
 
 
-def vector_search(collection, config: Settings, vector: list[float], *, limit: int = 5) -> list[dict[str, Any]]:
+def vector_search(collection, config: Settings, vector: list[float], *, limit: int = 5, source: str | None = None) -> list[dict[str, Any]]:
     try:
         state = index_state(collection, config)
         if state != "ready":
@@ -41,9 +41,11 @@ def vector_search(collection, config: Settings, vector: list[float], *, limit: i
         pipeline = [
             {"$vectorSearch": {"index": config.vector_index, "path": "embedding",
                                "queryVector": vector, "numCandidates": max(150, limit), "limit": limit}},
-            {"$project": {"_id": 1, "title": 1, "body": 1, "source": 1,
-                          "chunk_index": 1, "score": {"$meta": "vectorSearchScore"}}},
         ]
+        if source is not None:
+            pipeline.append({"$match": {"source": source}})
+        pipeline.append({"$project": {"_id": 1, "title": 1, "body": 1, "source": 1,
+                                      "chunk_index": 1, "score": {"$meta": "vectorSearchScore"}}})
         rows = list(collection.aggregate(pipeline))
     except OperationFailure as exc:
         if exc.code == 13:

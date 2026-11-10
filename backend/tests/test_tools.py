@@ -53,3 +53,31 @@ def test_invalid_query_vector_does_not_reach_mongodb(monkeypatch):
     monkeypatch.setattr(tools, "db", lambda: pytest.fail("invalid query reached MongoDB"))
     with pytest.raises(EmbeddingError, match="configured dimensions"):
         tools.get_information_for_question_answering.invoke({"user_query": "example"})
+
+
+def test_full_page_marks_truncation_and_preserves_location(monkeypatch):
+    database = mongomock.MongoClient()["t"]
+    database.full_docs.insert_one({"title": "Large", "body": "x" * 1001, "source": 'large"&.md'})
+    monkeypatch.setattr(tools, "db", lambda: database)
+    monkeypatch.setattr(tools.settings, "full_document_chars", 1000)
+    found = tools.get_page_content_for_summarization.invoke({"user_query": "Large"})
+    assert 'truncated="true"' in found and 'source="large&quot;&amp;.md"' in found
+    assert "x" * 1001 not in found
+
+
+def test_semantic_tool_deduplicates_passages_before_top_k(monkeypatch):
+    monkeypatch.setattr(tools, "db", lambda: {"chunked_docs": object()})
+    monkeypatch.setattr(tools, "generate_embedding", lambda _: [0.0])
+    monkeypatch.setattr(tools.settings, "retrieval_top_k", 2)
+    seen = {}
+
+    def search(_collection, _settings, _vector, **kwargs):
+        seen.update(kwargs)
+        return [{"_id": index, "title": str(index), "body": body, "score": 0.9}
+                for index, body in enumerate(["index prefixes", "index  prefixes", "aggregation"])]
+
+    monkeypatch.setattr(tools, "vector_search", search)
+    found = tools.get_information_for_question_answering.invoke({"user_query": "indexes", "source": "manual.md"})
+    assert seen == {"limit": 8, "source": "manual.md"}
+    assert found.count("<retrieved_document") == 2
+    assert 'title="0"' in found and 'title="2"' in found and 'score="0.9000"' in found

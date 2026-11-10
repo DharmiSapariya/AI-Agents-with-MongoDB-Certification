@@ -106,3 +106,23 @@ def test_failed_cases_stay_in_the_benchmark_denominator(tmp_path):
     assert "private provider detail" not in saved.read_text()
     with pytest.raises(FileExistsError):
         save_report(tmp_path, report)
+
+
+def test_source_filter_is_scalar_and_applied_after_vector_search(config):
+    collection = Mock()
+    collection.list_search_indexes.return_value = [atlas_index(config)]
+    collection.aggregate.return_value = []
+    vector_search(collection, config, [0.0] * config.embedding_dims, source="manual.md")
+    pipeline = collection.aggregate.call_args.args[0]
+    assert "$vectorSearch" in pipeline[0]
+    assert pipeline[1] == {"$match": {"source": "manual.md"}}
+
+
+def test_precision_penalizes_duplicate_and_missing_slots():
+    from scripts.evaluate_retrieval import evaluate
+
+    cases = [{"id": "q", "query": "query", "expected_sources": ["a", "b"]}]
+    result = evaluate(cases, lambda _: ["a", "a", "irrelevant", "b"], top_k=3)
+    assert result["recall_at_k"] == 0.5
+    assert result["precision_at_k"] == 1 / 3
+    assert result["mean_duplicate_source_rate"] == 1 / 3

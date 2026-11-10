@@ -23,31 +23,39 @@ ROOT = Path(__file__).resolve().parents[1]
 DATASET = ROOT / "benchmarks" / "retrieval" / "cases.json"
 
 
-def evaluate(cases, retrieve, *, capture_failures=False):
+def evaluate(cases, retrieve, *, top_k=5, capture_failures=False):
     results = []
     for case in cases:
         start = perf_counter()
         expected = set(case["expected_sources"])
         error = None
         try:
-            sources = retrieve(case["query"])
+            sources = retrieve(case["query"])[:top_k]
         except Exception as exc:
             if not capture_failures:
                 raise
             error = classify(exc).code
             sources = []
+        relevant = expected.intersection(sources)
+        named_sources = [source for source in sources if source is not None]
         ranks = [rank for rank, source in enumerate(sources, start=1) if source in expected]
         results.append({
             "id": case["id"], "expected_sources": sorted(expected), "retrieved_sources": sources,
-            "recall": len(expected.intersection(sources)) / len(expected) if expected else None,
+            "recall": len(relevant) / len(expected) if expected else None,
+            "precision_at_k": len(relevant) / top_k if expected else None,
+            "duplicate_source_rate": (len(named_sources) - len(set(named_sources))) / len(named_sources)
+            if named_sources else None,
             "reciprocal_rank": (1 / ranks[0] if ranks else 0.0) if expected else None,
             "returned_no_evidence": not sources if error is None else None, "error": error, "latency_ms": round((perf_counter() - start) * 1000, 2),
         })
     answerable = [result for result in results if result["recall"] is not None]
+    duplicate_rates = [row["duplicate_source_rate"] for row in results if row["duplicate_source_rate"] is not None]
     return {
         "case_count": len(results), "answerable_count": len(answerable),
         "failed_cases": sum(result["error"] is not None for result in results),
         "recall_at_k": sum(row["recall"] for row in answerable) / len(answerable) if answerable else None,
+        "precision_at_k": sum(row["precision_at_k"] for row in answerable) / len(answerable) if answerable else None,
+        "mean_duplicate_source_rate": sum(duplicate_rates) / len(duplicate_rates) if duplicate_rates else None,
         "mrr_at_k": sum(row["reciprocal_rank"] for row in answerable) / len(answerable) if answerable else None,
         "cases": results,
     }
@@ -108,7 +116,7 @@ def main() -> None:
             if not database["full_docs"].find_one({"source": source}, {"_id": 1}):
                 sys.exit(f"Missing corpus source: {source}. Ingest the evaluation corpus first.")
         retrieve = retrieve_vector if args.strategy == "vector" else retrieve_agent
-        report = evaluate(dataset["cases"], retrieve, capture_failures=True)
+        report = evaluate(dataset["cases"], retrieve, top_k=args.top_k, capture_failures=True)
     except (ApiError, PyMongoError) as exc:
         sys.exit(f"Live evaluation failed ({getattr(exc, 'code', None) or type(exc).__name__}).")
     finally:
